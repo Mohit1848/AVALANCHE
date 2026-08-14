@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local datasets and trained artifacts can be large or sensitive.
+data/*.csv
+models/*.joblib
+
+# Notebook checkpoints
+.ipynb_checkpoints/
