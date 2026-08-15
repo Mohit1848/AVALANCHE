@@ -5,6 +5,7 @@ __pycache__/
 # Local datasets and trained artifacts can be large or sensitive.
 data/*.csv
 models/*.joblib
+input.json
 
 # Notebook checkpoints
 .ipynb_checkpoints/

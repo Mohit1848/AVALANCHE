@@ -16,7 +16,7 @@ def load_input(input_json: str) -> dict[str, Any]:
 
     possible_path = Path(input_json)
     if possible_path.exists():
-        return json.loads(possible_path.read_text(encoding="utf-8"))
+        return json.loads(possible_path.read_text(encoding="utf-8-sig"))
     return json.loads(input_json)
 
 
