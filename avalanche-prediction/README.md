@@ -1,129 +1,155 @@
-# Avalanche Prediction
+# Avalanche Risk Intelligence — Backend Service
 
-AI/ML baseline for Smart India Hackathon problem SIH260105: Novel Technologies for Early Detection and Mitigation of Avalanches.
+AI/ML spatiotemporal decision-support backend for Smart India Hackathon problem
+**SIH260105: Novel Technologies for Early Detection and Mitigation of
+Avalanches**.
 
-## Objective
+> [!WARNING]
+> **RESEARCH DECISION-SUPPORT SYSTEM.**
+> This service provides research decision-support indicators. It is **not** a
+> certified operational avalanche warning authority. Predictions must be
+> evaluated alongside official regional bulletins (CAIC, EAWS) and certified
+> mountain-safety forecasters.
 
-Build a Phase 1 avalanche early-warning prototype that learns from CSV-based environmental and terrain data, then predicts avalanche probability and a configurable risk level.
+> [!CAUTION]
+> The model's predictive claims are currently **unvalidated**. Reported
+> evaluation metrics reach 100% because the dataset's negative class is
+> trivially separable from the positive class — see
+> [../docs/SCIENTIFIC_VALIDATION.md §6](../docs/SCIENTIFIC_VALIDATION.md#6-the-separability-problem)
+> before quoting any performance figure.
 
-Current Phase 1 architecture:
+---
+
+## 1. Documentation
+
+Full documentation lives in [`../docs/`](../docs/README.md):
+
+| Document | Covers |
+|---|---|
+| [ARCHITECTURE.md](../docs/ARCHITECTURE.md) | Component topology, request lifecycle, module map |
+| [DATA_PIPELINE.md](../docs/DATA_PIPELINE.md) | Ingestion, validation, freshness, storage, features |
+| [RISK_ENGINE.md](../docs/RISK_ENGINE.md) | Deterministic safety policy and escalation rules |
+| [API_REFERENCE.md](../docs/API_REFERENCE.md) | All 26 REST endpoints |
+| [SCIENTIFIC_VALIDATION.md](../docs/SCIENTIFIC_VALIDATION.md) | Methodology, results, limitations |
+| [USAGE_CONSTRAINTS.md](../docs/USAGE_CONSTRAINTS.md) | What this system may and may not be used for |
+| [DEVELOPMENT.md](../docs/DEVELOPMENT.md) | Setup, running, testing, troubleshooting |
+
+---
+
+## 2. Pipeline
 
 ```text
-Dataset
-  -> Preprocessing
-  -> ML Model
-  -> Avalanche Probability
-  -> Risk Level
+SNOTEL telemetry stations              config/stations.yaml
+        ↓
+Validation & provenance                services/ingestion/validator.py
+        ↓
+SQLite observation store               services/ingestion/storage.py
+        ↓
+Freshness gating (GOOD/DEGRADED/STALE) services/ingestion/scheduler.py
+        ↓
+Canonical 17-feature generation        api/services/feature_service.py
+        ↓
+Calibrated Random Forest inference     api/services/inference_service.py
+        ↓
+Deterministic risk engine              ml/risk_engine.py
+        ↓
+Persisted prediction history           SQLite prediction_history
+        ↓
+FastAPI service                        api/main.py
 ```
 
-Future phases may add IoT sensors, weather APIs, satellite/terrain feeds, FastAPI, React dashboard, RAG, LLM explanations, and alerting. They are intentionally not implemented yet.
+---
 
-## Current Dataset Status
+## 3. Key Capabilities
 
-No dataset was found in the workspace during setup. The project therefore does not include fake training data and does not claim any model performance.
+1. **Configurable stations** — 10 Colorado SNOTEL stations enabled and
+   parameterized through `config/stations.yaml` with no code changes.
+2. **Validation and provenance** — physical bounds enforced (air temperature
+   −60…45 °C, snow depth 0…1500 cm, SWE 0…3000 mm), UTC normalization, and
+   provenance attached to every record. Out-of-range values are nulled with a
+   warning rather than clamped.
+3. **Freshness protection** — telemetry ≤2h is `GOOD`, 2–6h `DEGRADED`, >6h
+   `STALE`. Stale telemetry suppresses predictions and raises a prominent
+   notice.
+4. **Policy/prediction separation** — the model emits a probability; a separate
+   deterministic engine sets the operational level and records why.
+5. **Fail-safe output** — missing critical features yield `INSUFFICIENT_DATA`
+   with null scores, never a fabricated number.
+6. **Full audit trail** — every prediction persists its input feature vector
+   plus model, dataset, feature-schema, and risk-engine versions.
+7. **Spatial intelligence** — IDW interpolation of *physical* variables
+   followed by per-cell inference; probabilities are never interpolated.
 
-Place a real CSV file inside `data/`, then provide the actual target column name during training.
+---
 
-## Dataset Requirements
-
-The CSV should contain observations with weather, snowpack, terrain, and avalanche label/risk information. Possible features include temperature, snow depth, snowfall, humidity, wind speed, wind direction, pressure, slope, and snow density.
-
-The exact column names are configurable. If your dataset uses names such as `temp_c`, `new_snow_cm`, or `avalanche_flag`, pass them through the command line.
-
-## Installation
+## 4. Running
 
 ```bash
 cd avalanche-prediction
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+.venv/Scripts/python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8000
 ```
 
-On macOS/Linux, activate with:
+| Surface | URL |
+|---|---|
+| API root | http://localhost:8000 |
+| Swagger UI | http://localhost:8000/docs |
+| ReDoc | http://localhost:8000/redoc |
+| Health probe | http://localhost:8000/health |
+
+Full setup instructions: [../docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md).
+
+---
+
+## 5. Testing
 
 ```bash
-source .venv/bin/activate
+.venv/Scripts/python.exe -m pytest        # 62 tests
 ```
 
-## Train
+**Status (verified 2026-08-17):** 62 passed in 5.85s. The 3 warnings emitted
+are third-party deprecations, not failures in this codebase.
 
-Example using all columns except the target:
+| Module | Tests |
+|---|---|
+| `test_spatial.py` | 14 |
+| `test_scientific_validation.py` | 11 |
+| `test_api.py` | 9 |
+| `test_live_telemetry.py` | 9 |
+| `test_acquisition_pipeline.py` | 5 |
+| `test_geography.py` | 5 |
+| `test_preprocessing.py` | 5 |
+| `test_risk_engine.py` | 3 |
+| `test_artifact.py` | 1 |
 
-```bash
-python ml/train.py --data data/your_dataset.csv --target avalanche_occurred --positive-label 1
-```
+The companion frontend suite is 16 tests (`cd frontend && npx vitest run`),
+also passing.
 
-Example with explicit feature columns:
+---
 
-```bash
-python ml/train.py --data data/your_dataset.csv --target avalanche_occurred --features temperature,snow_depth,snowfall,humidity,wind_speed,slope --positive-label 1
-```
-
-The script trains:
-
-- Random Forest
-- Logistic Regression
-
-It saves the best recall-aware baseline model to:
+## 6. Expected Startup Notice
 
 ```text
-models/avalanche_baseline.joblib
+Notice: Model artifact not found at .../models/avalanche_baseline.joblib.
+Running research fallback pipeline.
 ```
 
-## Evaluate
+No trained artifact is committed to the repository. The service runs a
+heuristic scoring path and reports `schema_status: FALLBACK_INITIALIZED` on
+`/health`. Run `python -m ml.train` to produce a real artifact, then restart the
+service — the inference engine is a singleton constructed at import.
 
-```bash
-python ml/evaluate.py --data data/your_dataset.csv --model models/avalanche_baseline.joblib
-```
+Predictions produced in fallback mode are **not model-derived**.
 
-Metrics include accuracy, precision, recall, F1-score, confusion matrix, and ROC-AUC when binary probabilities are available.
+---
 
-Recall is especially important because this is a safety-related classification problem. A false negative means the model failed to flag a possible avalanche event.
+## 7. Layout
 
-## Predict
-
-Example:
-
-```bash
-python ml/predict.py --model models/avalanche_baseline.joblib --input "{\"temperature\": -5, \"snow_depth\": 120, \"snowfall\": 25, \"humidity\": 80, \"wind_speed\": 35, \"slope\": 38}"
-```
-
-The output includes:
-
-- avalanche probability
-- risk score from 0 to 100
-- risk level: `LOW`, `MEDIUM`, or `HIGH`
-
-Risk thresholds default to:
-
-```json
-{"medium": 0.4, "high": 0.7}
-```
-
-These thresholds are prototype settings only. They are configurable and are not scientifically validated.
-
-Override them like this:
-
-```bash
-python ml/predict.py --model models/avalanche_baseline.joblib --input input.json --risk-thresholds "{\"medium\": 0.35, \"high\": 0.65}"
-```
-
-## File Guide
-
-- `data/README.md`: explains required dataset structure and recommended data sources.
-- `ml/preprocessing.py`: configurable CSV loading, inspection, cleaning, feature/target separation, encoding, scaling, and train/test split.
-- `ml/train.py`: trains Random Forest and Logistic Regression baselines and saves the best model.
-- `ml/evaluate.py`: evaluates a saved model on a CSV file.
-- `ml/predict.py`: predicts avalanche probability and configurable LOW/MEDIUM/HIGH risk level.
-- `models/`: stores trained model artifacts.
-- `notebooks/`: reserved for exploratory analysis.
-- `requirements.txt`: Python dependencies.
-
-## Prototype Limitations
-
-- No real dataset is included yet.
-- Model performance cannot be reported until a validated dataset is added.
-- Risk thresholds are configurable prototype values, not scientific warning thresholds.
-- The model only learns patterns available in the supplied CSV.
-- Location, timestamp alignment, terrain resolution, and avalanche-label quality will strongly affect reliability.
-- This baseline is not suitable for operational public safety decisions without expert validation.
+| Path | Contents |
+|---|---|
+| `api/` | FastAPI app, routes, schemas, services |
+| `ml/` | Training, evaluation framework, risk engine, spatial modules |
+| `services/ingestion/` | SNOTEL worker, validator, scheduler, storage |
+| `config/` | `stations.yaml`, `spatial.yaml` |
+| `data/` | Raw inputs, processed dataset, terrain, geography — see [data/README.md](./data/README.md) |
+| `reports/evaluation/` | Generated validation metrics and audit reports |
+| `tests/` | 62 backend tests |
