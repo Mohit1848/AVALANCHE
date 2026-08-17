@@ -1,0 +1,11 @@
+avalanche_id,date,time,zone,location,latitude,longitude,elevation_ft,elevation_m,slope_deg,aspect,type,trigger,trigger_code,d_size,r_size,slab_width_m,slab_thickness_cm,vertical_fall_m
+CAIC_2023_001,2023-01-01,14:00,Front Range,Loveland Pass East Wall,39.6642,-105.8789,11990,3654,38,NE,Hard Slab,Skier,AS,D2.5,R3,45,60,180
+CAIC_2023_002,2023-01-01,16:30,Front Range,Berthoud Pass - Current Creek,39.7981,-105.7778,11400,3475,36,E,Soft Slab,Snowboarder,AB,D2,R2,30,45,120
+CAIC_2023_003,2023-01-02,11:15,Vail & Summit County,Vail Pass - Black Lakes,39.5312,-106.2185,10850,3307,35,NE,Soft Slab,Snowmobiler,AM,D2,R2,25,40,90
+CAIC_2023_004,2023-01-02,15:00,Front Range,Moffat Tunnel East Portal Path,39.9021,-105.6512,10200,3108,39,SE,Hard Slab,Natural,N,D3,R3,80,90,350
+CAIC_2023_005,2023-01-05,10:30,Sawatch,Fremont Pass - Chalk Mountain,39.3621,-106.1954,11800,3596,37,E,Soft Slab,Skier,AS,D2,R3,35,50,150
+CAIC_2023_006,2023-01-08,13:00,Vail & Summit County,Loveland Basin Chutes,39.6802,-105.8971,12100,3688,41,N,Hard Slab,Explosive,AE,D2.5,R2,50,70,200
+CAIC_2023_007,2023-01-12,09:45,Front Range,Berthoud Pass - Floral Park,39.8054,-105.7721,11650,3551,34,NE,Soft Slab,Skier,AS,D1.5,R2,20,35,75
+CAIC_2023_008,2023-01-15,14:15,Vail & Summit County,Hoosier Pass West,39.3614,-106.0628,11540,3517,36,SE,Hard Slab,Snowmobiler,AM,D2,R2,40,55,110
+CAIC_2023_009,2023-01-18,,Sawatch,Independence Pass East,39.1089,-106.5642,12090,3685,38,NE,Hard Slab,Natural,N,D3,R4,120,110,400
+CAIC_2023_010,2023-01-22,12:00,Front Range,Grizzly Peak Gully,39.6451,-105.8641,12400,3779,40,E,Soft Slab,Skier,AS,D2,R3,35,65,160

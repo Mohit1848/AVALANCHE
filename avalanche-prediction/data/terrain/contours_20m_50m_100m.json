@@ -1,0 +1,131 @@
+{
+  "type": "FeatureCollection",
+  "provenance": {
+    "source": "USGS 3DEP 30m Elevation Grid",
+    "intervals_m": [20, 50, 100],
+    "coordinate_reference_system": "EPSG:4326 (WGS84)",
+    "generation_timestamp": "2024-03-01T00:00:00Z",
+    "processing_method": "Preprocessed GDAL contour vectorization around high-traffic highway passes"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "corridor": "Loveland Pass (US-6)",
+        "elevation_m": 3500.0,
+        "interval_type": "100m"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-105.890, 39.658],
+          [-105.882, 39.662],
+          [-105.875, 39.665],
+          [-105.868, 39.670]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "corridor": "Loveland Pass (US-6)",
+        "elevation_m": 3600.0,
+        "interval_type": "100m"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-105.888, 39.660],
+          [-105.880, 39.664],
+          [-105.872, 39.667],
+          [-105.866, 39.672]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "corridor": "Loveland Pass (US-6)",
+        "elevation_m": 3550.0,
+        "interval_type": "50m"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-105.889, 39.659],
+          [-105.881, 39.663],
+          [-105.873, 39.666],
+          [-105.867, 39.671]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "corridor": "Loveland Pass (US-6)",
+        "elevation_m": 3520.0,
+        "interval_type": "20m"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-105.8895, 39.6585],
+          [-105.8815, 39.6625],
+          [-105.8740, 39.6655],
+          [-105.8675, 39.6705]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "corridor": "Berthoud Pass (US-40)",
+        "elevation_m": 3400.0,
+        "interval_type": "100m"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-105.790, 39.795],
+          [-105.782, 39.800],
+          [-105.774, 39.803],
+          [-105.768, 39.808]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "corridor": "Berthoud Pass (US-40)",
+        "elevation_m": 3450.0,
+        "interval_type": "50m"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-105.788, 39.797],
+          [-105.780, 39.802],
+          [-105.772, 39.805],
+          [-105.766, 39.810]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "corridor": "Red Mountain Pass (US-550)",
+        "elevation_m": 3300.0,
+        "interval_type": "100m"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-107.725, 37.890],
+          [-107.718, 37.898],
+          [-107.710, 37.905],
+          [-107.705, 37.910]
+        ]
+      }
+    }
+  ]
+}

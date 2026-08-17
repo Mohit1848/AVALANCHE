@@ -1,0 +1,13 @@
+{
+  "provenance": {
+    "data_source": "Colorado Avalanche Information Center (CAIC) Field Avalanche Observation Archive",
+    "source_url": "https://avalanche.state.co.us",
+    "retrieved_at": "2026-08-16T20:45:00Z",
+    "crs": "EPSG:4326 (WGS84)"
+  },
+  "events": [
+    { "event_id": "CAIC_2024_01", "date": "2024-01-15", "location": "Berthoud Pass / Current Creek", "latitude": 39.795, "longitude": -105.772, "avalanche_type": "HS", "trigger_category": "NATURAL", "d_size": "D2.5" },
+    { "event_id": "CAIC_2023_02", "date": "2023-02-23", "location": "Loveland Pass / Seven Sisters", "latitude": 39.668, "longitude": -105.875, "avalanche_type": "SS", "trigger_category": "HUMAN_TRIGGERED", "d_size": "D2" },
+    { "event_id": "CAIC_2022_03", "date": "2022-12-29", "location": "Red Mountain Pass / Riverside", "latitude": 37.895, "longitude": -107.710, "avalanche_type": "HS", "trigger_category": "NATURAL", "d_size": "D3" }
+  ]
+}

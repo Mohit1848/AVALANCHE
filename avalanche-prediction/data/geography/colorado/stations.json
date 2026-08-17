@@ -1,0 +1,20 @@
+{
+  "provenance": {
+    "data_source": "USDA NRCS SNOTEL Automated Weather Data Base (AWDB)",
+    "source_url": "https://www.wcc.nrcs.usda.gov/snow/",
+    "retrieved_at": "2026-08-16T20:45:00Z",
+    "crs": "EPSG:4326 (WGS84)"
+  },
+  "stations": [
+    { "station_id": "335", "name": "Berthoud Summit", "latitude": 39.798, "longitude": -105.778, "elevation": 3444, "zone_id": "CO_FRONT_RANGE" },
+    { "station_id": "586", "name": "Loveland Basin", "latitude": 39.674, "longitude": -105.897, "elevation": 3475, "zone_id": "CO_FRONT_RANGE" },
+    { "station_id": "505", "name": "Grizzly Peak", "latitude": 39.645, "longitude": -105.867, "elevation": 3383, "zone_id": "CO_VAIL_SUMMIT" },
+    { "station_id": "531", "name": "Hoosier Pass", "latitude": 39.362, "longitude": -106.061, "elevation": 3475, "zone_id": "CO_VAIL_SUMMIT" },
+    { "station_id": "415", "name": "Copper Mountain", "latitude": 39.475, "longitude": -106.152, "elevation": 3216, "zone_id": "CO_VAIL_SUMMIT" },
+    { "station_id": "485", "name": "Fremont Pass", "latitude": 39.378, "longitude": -106.188, "elevation": 3475, "zone_id": "CO_SAWATCH" },
+    { "station_id": "542", "name": "Independence Pass", "latitude": 39.108, "longitude": -106.602, "elevation": 3688, "zone_id": "CO_ASPEN" },
+    { "station_id": "737", "name": "Schofield Pass", "latitude": 39.015, "longitude": -107.048, "elevation": 3261, "zone_id": "CO_GUNNISON" },
+    { "station_id": "709", "name": "Red Mountain Pass", "latitude": 37.899, "longitude": -107.714, "elevation": 3414, "zone_id": "CO_SAN_JUAN" },
+    { "station_id": "1030", "name": "Arapaho Ridge", "latitude": 40.351, "longitude": -106.381, "elevation": 3341, "zone_id": "CO_STEAMBOAT" }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "provenance": {
+    "source": "Survey of India State & Himalayan Regional Division Boundaries",
+    "source_url": "https://www.surveyofindia.gov.in",
+    "retrieved_at": "2026-08-16T20:45:00Z",
+    "crs": "EPSG:4326 (WGS84)"
+  },
+  "regions": [
+    {
+      "id": "IN-REG-LADAKH",
+      "name": "Ladakh (Karakoram & Zanskar)",
+      "state": "Ladakh",
+      "center_latitude": 34.50,
+      "center_longitude": 77.50,
+      "bounds": {
+        "min_latitude": 32.50,
+        "max_latitude": 36.00,
+        "min_longitude": 75.50,
+        "max_longitude": 79.50
+      },
+      "peak_count": 5
+    },
+    {
+      "id": "IN-REG-JK",
+      "name": "Jammu & Kashmir (Pir Panjal & Greater Himalaya)",
+      "state": "Jammu & Kashmir",
+      "center_latitude": 33.80,
+      "center_longitude": 75.00,
+      "bounds": {
+        "min_latitude": 32.00,
+        "max_latitude": 35.50,
+        "min_longitude": 73.50,
+        "max_longitude": 76.50
+      },
+      "peak_count": 0
+    },
+    {
+      "id": "IN-REG-HP",
+      "name": "Himachal Pradesh (Dhauladhar & Pir Panjal)",
+      "state": "Himachal Pradesh",
+      "center_latitude": 32.10,
+      "center_longitude": 77.60,
+      "bounds": {
+        "min_latitude": 30.50,
+        "max_latitude": 33.30,
+        "min_longitude": 75.50,
+        "max_longitude": 79.00
+      },
+      "peak_count": 3
+    },
+    {
+      "id": "IN-REG-UK",
+      "name": "Uttarakhand (Garhwal & Kumaon Himalaya)",
+      "state": "Uttarakhand",
+      "center_latitude": 30.50,
+      "center_longitude": 79.50,
+      "bounds": {
+        "min_latitude": 28.70,
+        "max_latitude": 31.50,
+        "min_longitude": 77.50,
+        "max_longitude": 81.10
+      },
+      "peak_count": 6
+    },
+    {
+      "id": "IN-REG-SK",
+      "name": "Sikkim (Eastern Himalaya & Kangchenjunga)",
+      "state": "Sikkim",
+      "center_latitude": 27.70,
+      "center_longitude": 88.40,
+      "bounds": {
+        "min_latitude": 27.00,
+        "max_latitude": 28.20,
+        "min_longitude": 88.00,
+        "max_longitude": 89.00
+      },
+      "peak_count": 5
+    }
+  ]
+}

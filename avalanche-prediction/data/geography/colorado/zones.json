@@ -1,0 +1,16 @@
+{
+  "provenance": {
+    "data_source": "Colorado Avalanche Information Center (CAIC) Regional Forecast Zones",
+    "source_url": "https://avalanche.state.co.us",
+    "retrieved_at": "2026-08-16T20:45:00Z",
+    "crs": "EPSG:4326 (WGS84)"
+  },
+  "zones": [
+    { "zone_id": "CO_FRONT_RANGE", "name": "Front Range", "center_latitude": 39.750, "center_longitude": -105.800, "elevation_range_m": "2,400m – 4,350m", "primary_snotel_stations": ["335", "586"] },
+    { "zone_id": "CO_VAIL_SUMMIT", "name": "Vail & Summit County", "center_latitude": 39.550, "center_longitude": -106.050, "elevation_range_m": "2,500m – 4,300m", "primary_snotel_stations": ["505", "531", "415"] },
+    { "zone_id": "CO_SAWATCH", "name": "Sawatch Range", "center_latitude": 39.300, "center_longitude": -106.350, "elevation_range_m": "2,600m – 4,400m", "primary_snotel_stations": ["485"] },
+    { "zone_id": "CO_ASPEN", "name": "Aspen Zone", "center_latitude": 39.150, "center_longitude": -106.750, "elevation_range_m": "2,400m – 4,350m", "primary_snotel_stations": ["542"] },
+    { "zone_id": "CO_GUNNISON", "name": "Gunnison & Crested Butte", "center_latitude": 38.950, "center_longitude": -107.050, "elevation_range_m": "2,600m – 4,100m", "primary_snotel_stations": ["737"] },
+    { "zone_id": "CO_SAN_JUAN", "name": "San Juan Mountains", "center_latitude": 37.850, "center_longitude": -107.750, "elevation_range_m": "2,400m – 4,370m", "primary_snotel_stations": ["709"] }
+  ]
+}

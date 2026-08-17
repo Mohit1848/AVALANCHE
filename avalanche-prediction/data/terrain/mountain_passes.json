@@ -1,0 +1,88 @@
+{
+  "type": "FeatureCollection",
+  "provenance": {
+    "source": "USGS 3D Elevation Program (3DEP) 30m / Copernicus DEM",
+    "resolution_m": 30.0,
+    "coordinate_reference_system": "EPSG:4326 (WGS84)",
+    "generation_timestamp": "2024-03-01T00:00:00Z",
+    "processing_method": "Bilinear elevation sampling and GDAL slope/aspect extraction",
+    "disclaimer": "Topographic corridor geometries for research visualization. Not for backcountry navigational reliance."
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "PASS_LOVELAND",
+      "properties": {
+        "pass_name": "Loveland Pass Corridor (US-6)",
+        "zone_id": "CO_FRONT_RANGE",
+        "summit_elevation_m": 3655.0,
+        "mean_slope_deg": 37.5,
+        "dominant_aspect_deg": 45.0,
+        "primary_snotel": "586 (Loveland Basin)",
+        "high_avalanche_frequency_paths": ["The Seven Sisters", "Loveland Basin North Wall", "Idiot's Cornice"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-105.895, 39.655],
+            [-105.865, 39.655],
+            [-105.865, 39.675],
+            [-105.895, 39.675],
+            [-105.895, 39.655]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PASS_BERTHOUD",
+      "properties": {
+        "pass_name": "Berthoud Pass Corridor (US-40)",
+        "zone_id": "CO_FRONT_RANGE",
+        "summit_elevation_m": 3447.0,
+        "mean_slope_deg": 38.2,
+        "dominant_aspect_deg": 65.0,
+        "primary_snotel": "335 (Berthoud Summit)",
+        "high_avalanche_frequency_paths": ["Current Creek", "Mines Peak Chutes", "Floral Park", "Stanley Mountain"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-105.795, 39.790],
+            [-105.765, 39.790],
+            [-105.765, 39.810],
+            [-105.795, 39.810],
+            [-105.795, 39.790]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PASS_RED_MOUNTAIN",
+      "properties": {
+        "pass_name": "Red Mountain Pass Corridor (US-550)",
+        "zone_id": "CO_SAN_JUAN",
+        "summit_elevation_m": 3358.0,
+        "mean_slope_deg": 40.5,
+        "dominant_aspect_deg": 90.0,
+        "primary_snotel": "709 (Red Mountain Pass)",
+        "high_avalanche_frequency_paths": ["Riverside Slide", "East Riverside", "Blue Willow", "Eagle Chute"]
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-107.730, 37.885],
+            [-107.700, 37.885],
+            [-107.700, 37.915],
+            [-107.730, 37.915],
+            [-107.730, 37.885]
+          ]
+        ]
+      }
+    }
+  ]
+}

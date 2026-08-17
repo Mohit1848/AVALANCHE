@@ -1,0 +1,32 @@
+{
+  "provenance": {
+    "source": "DGRE (Defence Geoinformatics Research Establishment) / SASE / IMD Mountain Telemetry Network Schema",
+    "source_url": "https://www.drdo.gov.in/drdo/defence-geoinformatics-research-establishment-dgre",
+    "status": "FUTURE_DATA_INTEGRATION_READY",
+    "retrieved_at": "2026-08-16T20:45:00Z",
+    "note": "Observation station feeds for Western and Eastern Himalayas are designated for future ingestion passes."
+  },
+  "planned_corridors": [
+    {
+      "corridor_id": "IN-CORR-LADAKH-SIACHEN",
+      "name": "Siachen / Nubra / Khardung La Corridor",
+      "state": "Ladakh",
+      "station_type": "AWS / Snow Gauge",
+      "status": "PENDING_TELEMETRY_LINK"
+    },
+    {
+      "corridor_id": "IN-CORR-MANALI-LEH",
+      "name": "Manali - Rohtang - Atal Tunnel - Keylong Corridor",
+      "state": "Himachal Pradesh",
+      "station_type": "AWS / Snow Gauge",
+      "status": "PENDING_TELEMETRY_LINK"
+    },
+    {
+      "corridor_id": "IN-CORR-BADRINATH-VALLEY",
+      "name": "Alaknanda / Badrinath / Hemkund Corridor",
+      "state": "Uttarakhand",
+      "station_type": "AWS / Snow Gauge",
+      "status": "PENDING_TELEMETRY_LINK"
+    }
+  ]
+}

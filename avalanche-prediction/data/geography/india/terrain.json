@@ -1,0 +1,26 @@
+{
+  "provenance": {
+    "source": "Survey of India / Copernicus GLO-30 DEM Architecture Framework",
+    "source_url": "https://www.surveyofindia.gov.in",
+    "status": "ARCHITECTURAL_PREPARATION_ONLY",
+    "retrieved_at": "2026-08-16T20:45:00Z",
+    "crs": "EPSG:4326 (WGS84)"
+  },
+  "terrain_catalog": {
+    "coverage_name": "Indian Himalayan High-Altitude Corridors",
+    "terrain_availability": "NOT_AVAILABLE",
+    "supported_dem_products": [
+      "Survey of India High-Resolution Topographic DEM (Future Acquisition)",
+      "Copernicus GLO-30 30m Global DEM (Offline Staged)"
+    ],
+    "policy": "No fabricated or synthetic slope/aspect values are substituted. Real DEM grids will be processed in future phases.",
+    "future_fields": [
+      "elevation_m",
+      "slope_deg",
+      "aspect_deg",
+      "contour_20m_available",
+      "contour_50m_available",
+      "contour_100m_available"
+    ]
+  }
+}

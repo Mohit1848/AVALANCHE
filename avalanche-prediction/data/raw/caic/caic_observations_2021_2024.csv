@@ -1,0 +1,33 @@
+avalanche_id,date,time,zone,location,latitude,longitude,elevation_ft,elevation_m,slope_deg,aspect,type,trigger,trigger_code,d_size,r_size,slab_width_m,slab_thickness_cm,vertical_fall_m
+CAIC_2021_001,2021-12-10,13:30,Front Range,Loveland Pass - East Wall,39.6642,-105.8789,11990,3654,38,NE,Hard Slab,Skier,AS,D2,R2,35,45,150
+CAIC_2021_002,2021-12-15,11:00,Vail & Summit County,Vail Pass - Black Lakes,39.5312,-106.2185,10850,3307,35,NE,Soft Slab,Snowmobiler,AM,D2,R2,25,40,90
+CAIC_2021_003,2021-12-24,,Front Range,Berthoud Pass - Current Creek,39.7981,-105.7778,11400,3475,37,E,Hard Slab,Natural,N,D2.5,R3,60,70,220
+CAIC_2021_004,2022-01-05,14:15,Sawatch,Fremont Pass - Chalk Mountain,39.3621,-106.1954,11800,3596,36,E,Soft Slab,Skier,AS,D2,R3,30,50,140
+CAIC_2021_005,2022-01-18,10:00,Front Range,Moffat Tunnel East Portal,39.9021,-105.6512,10200,3108,39,SE,Hard Slab,Natural,N,D3,R3,90,85,380
+CAIC_2021_006,2022-02-02,15:30,Vail & Summit County,Hoosier Pass - North Chutes,39.3614,-106.0628,11540,3517,37,N,Hard Slab,Snowboarder,AB,D2,R2,40,55,120
+CAIC_2021_007,2022-02-14,09:30,San Juan,Red Mountain Pass - Mother Cline,37.8989,-107.7139,11200,3414,40,E,Hard Slab,Explosive,AE,D2.5,R3,55,75,250
+CAIC_2021_008,2022-03-01,12:45,Gunnison,Schofield Pass - Gothic,39.0150,-107.0480,10700,3261,35,NE,Wet Slab,Natural,N,D2,R2,30,45,100
+CAIC_2021_009,2022-03-15,16:00,Steamboat,Buffalo Pass - Dry Lake,40.5310,-106.7510,10400,3170,34,E,Soft Slab,Snowmobiler,AM,D1.5,R2,20,35,70
+CAIC_2021_010,2022-04-05,13:00,Aspen,Independence Pass - Mountain Boy,39.1080,-106.6020,12100,3688,38,NE,Wet Loose,Skier,AS,D2,R3,45,60,180
+CAIC_2022_001,2022-11-28,14:00,Front Range,Loveland Basin - Golden Slipper,39.6802,-105.8971,12100,3688,41,N,Hard Slab,Explosive,AE,D2.5,R2,50,70,200
+CAIC_2022_002,2022-12-08,11:30,Front Range,Berthoud Pass - Floral Park,39.8054,-105.7721,11650,3551,34,NE,Soft Slab,Skier,AS,D1.5,R2,20,35,75
+CAIC_2022_003,2022-12-22,,Sawatch,Monarch Pass - South Ridge,38.4980,-106.3250,11900,3627,38,E,Hard Slab,Natural,N,D3,R4,110,100,350
+CAIC_2022_004,2023-01-01,14:00,Front Range,Loveland Pass - East Wall,39.6642,-105.8789,11990,3654,38,NE,Hard Slab,Skier,AS,D2.5,R3,45,60,180
+CAIC_2022_005,2023-01-01,16:30,Front Range,Berthoud Pass - Current Creek,39.7981,-105.7778,11400,3475,36,E,Soft Slab,Snowboarder,AB,D2,R2,30,45,120
+CAIC_2022_006,2023-01-02,11:15,Vail & Summit County,Vail Pass - Black Lakes,39.5312,-106.2185,10850,3307,35,NE,Soft Slab,Snowmobiler,AM,D2,R2,25,40,90
+CAIC_2022_007,2023-01-05,10:30,Sawatch,Fremont Pass - Chalk Mountain,39.3621,-106.1954,11800,3596,37,E,Soft Slab,Skier,AS,D2,R3,35,50,150
+CAIC_2022_008,2023-01-15,14:15,Vail & Summit County,Hoosier Pass West,39.3614,-106.0628,11540,3517,36,SE,Hard Slab,Snowmobiler,AM,D2,R2,40,55,110
+CAIC_2022_009,2023-01-22,12:00,Front Range,Grizzly Peak Gully,39.6451,-105.8641,12400,3779,40,E,Soft Slab,Skier,AS,D2,R3,35,65,160
+CAIC_2022_010,2023-02-10,13:45,San Juan,Coal Bank Pass - North,37.7010,-107.7780,10600,3231,39,N,Hard Slab,Skier,AS,D2.5,R3,50,70,210
+CAIC_2022_011,2023-03-02,,Vail & Summit County,Uneva Peak West Bowl,39.5620,-106.1510,12200,3718,38,W,Hard Slab,Natural,N,D3,R3,80,95,320
+CAIC_2022_012,2023-03-20,14:30,Gunnison,Kebler Pass - Ruby Range,38.8780,-107.1250,11300,3444,36,NE,Wet Slab,Natural,N,D2,R3,40,55,140
+CAIC_2023_001,2023-11-20,11:00,Front Range,Loveland Pass - West Gully,39.6640,-105.8795,11900,3627,37,W,Soft Slab,Skier,AS,D1.5,R2,20,30,80
+CAIC_2023_002,2023-12-05,15:15,Vail & Summit County,Tenmile Range - Peak 10,39.4510,-106.0720,12300,3749,39,E,Hard Slab,Snowboarder,AB,D2,R2,35,50,160
+CAIC_2023_003,2023-12-18,,Front Range,Berthoud Pass - Nitro Chute,39.8010,-105.7740,11800,3596,42,E,Hard Slab,Natural,N,D2.5,R3,65,75,230
+CAIC_2023_004,2024-01-10,13:00,San Juan,Red Mountain Pass - Brooklyns,37.8920,-107.7080,11500,3505,38,NE,Hard Slab,Explosive,AE,D2.5,R3,60,80,260
+CAIC_2023_005,2024-01-14,12:30,Sawatch,Independence Pass - Twining,39.1120,-106.5890,12050,3673,37,E,Soft Slab,Skier,AS,D2,R3,40,60,170
+CAIC_2023_006,2024-01-28,10:45,Vail & Summit County,Vail Pass - Shrine Bowl,39.5420,-106.2250,11100,3383,36,NE,Soft Slab,Snowmobiler,AM,D2,R2,30,45,110
+CAIC_2023_007,2024-02-12,,Steamboat,Rabbit Ears Pass - West,40.3850,-106.6120,9800,2987,35,E,Hard Slab,Natural,N,D2,R2,35,50,130
+CAIC_2023_008,2024-02-25,14:00,Gunnison,Schofield Pass - Emerald Lake,39.0220,-107.0510,10500,3200,38,NE,Hard Slab,Skier,AS,D2.5,R3,50,70,190
+CAIC_2023_009,2024-03-10,13:30,Front Range,Grizzly Peak - Emperor Couloir,39.6480,-105.8610,12600,3840,44,N,Hard Slab,Skier,AS,D2,R3,30,60,220
+CAIC_2023_010,2024-04-02,15:00,Sawatch,Fremont Pass - South Face,39.3710,-106.1920,11700,3566,36,S,Wet Loose,Natural,N,D1.5,R2,25,40,90

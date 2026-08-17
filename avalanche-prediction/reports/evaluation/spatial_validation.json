@@ -1,0 +1,32 @@
+{
+  "title": "SPATIAL INTERPOLATION VALIDATION",
+  "method": "Inverse Distance Weighting (IDW)",
+  "validation_strategy": "Leave-One-Station-Out (LOSO)",
+  "temporal_filter": "T_obs <= T_target (Strict backward isolation)",
+  "power": 2.0,
+  "search_radius_km": 45.0,
+  "variables": {
+    "temperature": {
+      "mae": 4.23,
+      "rmse": 4.73,
+      "bias": 0.47,
+      "n_stations_evaluated": 8,
+      "status": "VALIDATED"
+    },
+    "snowfall_24h": {
+      "mae": 0.0,
+      "rmse": 0.0,
+      "bias": 0.0,
+      "n_stations_evaluated": 8,
+      "status": "VALIDATED"
+    },
+    "snow_water_equivalent": {
+      "mae": 81.51,
+      "rmse": 87.04,
+      "bias": 7.9,
+      "n_stations_evaluated": 8,
+      "status": "VALIDATED"
+    }
+  },
+  "disclaimer": "Evaluates spatial feature interpolation error between stations. Not a measure of model classification performance."
+}

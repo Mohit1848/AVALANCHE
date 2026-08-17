@@ -1,0 +1,12 @@
+subgroup_column,subgroup_value,status,n_total,n_positive,n_negative,recall,precision,f2,missed_events,note
+trigger_category,EXPLOSIVE,INSUFFICIENT SAMPLE,1,1,0,,,,,Sample size (N=1) < threshold (5). Suppressed to prevent misleading percentages.
+trigger_category,HUMAN_TRIGGERED,VALID,6,6,0,1.0,1.0,1.0,0.0,Evaluated at operating threshold θ = 0.40.
+trigger_category,NATURAL,INSUFFICIENT SAMPLE,3,3,0,,,,,Sample size (N=3) < threshold (5). Suppressed to prevent misleading percentages.
+trigger_category,NONE,VALID,6,0,6,,,,0.0,Evaluated at operating threshold θ = 0.40.
+elevation_band,"< 3,200m",INSUFFICIENT SAMPLE,2,2,0,,,,,Sample size (N=2) < threshold (5). Suppressed to prevent misleading percentages.
+elevation_band,"3,200m - 3,500m",VALID,7,1,6,1.0,1.0,1.0,0.0,Evaluated at operating threshold θ = 0.40.
+elevation_band,"> 3,500m",VALID,7,7,0,1.0,1.0,1.0,0.0,Evaluated at operating threshold θ = 0.40.
+slope_band,< 30° (Sub-critical),VALID,6,0,6,,,,0.0,Evaluated at operating threshold θ = 0.40.
+slope_band,30° - 38° (Core Prone),VALID,7,7,0,1.0,1.0,1.0,0.0,Evaluated at operating threshold θ = 0.40.
+slope_band,> 38° (Steep Release),INSUFFICIENT SAMPLE,3,3,0,,,,,Sample size (N=3) < threshold (5). Suppressed to prevent misleading percentages.
+season,2023-2024,VALID,16,10,6,1.0,1.0,1.0,0.0,Evaluated at operating threshold θ = 0.40.

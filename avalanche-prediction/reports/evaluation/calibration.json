@@ -1,0 +1,34 @@
+{
+  "uncalibrated": {
+    "brier_score": 0.0004,
+    "ece": 0.0071,
+    "calibration_curve": [
+      {
+        "mean_predicted": 0.005,
+        "fraction_positives": 0.0
+      },
+      {
+        "mean_predicted": 0.9917,
+        "fraction_positives": 1.0
+      }
+    ]
+  },
+  "calibrated": {
+    "brier_score": 0.0077,
+    "ece": 0.0854,
+    "calibration_curve": [
+      {
+        "mean_predicted": 0.1055,
+        "fraction_positives": 0.0
+      },
+      {
+        "mean_predicted": 0.9267,
+        "fraction_positives": 1.0
+      }
+    ]
+  },
+  "brier_improvement": -0.0074,
+  "calibration_improves_reliability": false,
+  "n_samples": 16,
+  "positive_rate": 0.625
+}

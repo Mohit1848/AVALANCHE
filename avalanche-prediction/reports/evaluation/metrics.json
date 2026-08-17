@@ -1,0 +1,123 @@
+{
+  "dataset": {
+    "total_records": 96,
+    "positive_events": 61,
+    "background_controls": 35,
+    "positive_rate": 0.6354,
+    "seasons": [
+      "2015-2016",
+      "2016-2017",
+      "2017-2018",
+      "2018-2019",
+      "2019-2020",
+      "2020-2021",
+      "2021-2022",
+      "2022-2023",
+      "2023-2024"
+    ],
+    "locations": [
+      "SNTL_586_LOVELAND_BASIN",
+      "SNTL_335_BERTHOUD_SUMMIT",
+      "SNTL_415_COPPER_MOUNTAIN",
+      "SNTL_485_FREMONT_PASS",
+      "SNTL_531_HOOSIER_PASS",
+      "SNTL_709_RED_MOUNTAIN_PASS",
+      "SNTL_737_SCHOFIELD_PASS",
+      "SNTL_1030_ARAPAHO_RIDGE",
+      "SNTL_542_INDEPENDENCE_PASS",
+      "SNTL_505_GRIZZLY_PEAK",
+      "SNTL_642_MOLASPAS"
+    ],
+    "synthetic": false
+  },
+  "temporal_holdout_2023_2024": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "f1": 1.0,
+    "f2": 1.0,
+    "specificity": 1.0,
+    "fnr": 0.0,
+    "fpr": 0.0,
+    "pr_auc": 1.0,
+    "roc_auc": 1.0,
+    "brier_score": 0.0077
+  },
+  "walk_forward_cross_validation": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "f1": 1.0,
+    "f2": 1.0,
+    "pr_auc": 1.0,
+    "roc_auc": 1.0,
+    "brier_score": 0.0106
+  },
+  "spatial_generalization": {
+    "title": "SPATIAL GENERALIZATION ANALYSIS (GROUP LOCATION HOLDOUT)",
+    "held_out_locations": [
+      "SNTL_415_COPPER_MOUNTAIN",
+      "SNTL_485_FREMONT_PASS"
+    ],
+    "seen_locations": {
+      "n_samples": 40,
+      "n_positives": 22,
+      "n_negatives": 18,
+      "recall": 1.0,
+      "precision": 1.0,
+      "f2": 1.0,
+      "pr_auc": 1.0,
+      "brier_score": 0.0071
+    },
+    "unseen_locations": {
+      "n_samples": 24,
+      "n_positives": 16,
+      "n_negatives": 8,
+      "recall": 1.0,
+      "precision": 1.0,
+      "f2": 1.0,
+      "pr_auc": 1.0,
+      "brier_score": 0.0178
+    },
+    "spatial_dropoff_recall": 0.0,
+    "disclaimer": "Evaluates geographic transferability across distinct Colorado mountain corridors."
+  },
+  "joint_spatiotemporal_holdout": {
+    "title": "JOINT TEMPORAL + SPATIAL HOLDOUT VALIDATION",
+    "held_out_season": "2023-2024",
+    "n_samples": 4,
+    "n_positives": 2,
+    "n_negatives": 2,
+    "recall": 1.0,
+    "precision": 1.0,
+    "f2": 1.0,
+    "pr_auc": 1.0,
+    "brier_score": 0.0101,
+    "conditions_satisfied": [
+      "T_obs <= T_target (Strict backward temporal isolation)",
+      "Unseen geographic test coordinate / corridor holdout",
+      "Zero parameter tuning on held-out partition"
+    ]
+  },
+  "quality_impact": {
+    "data_quality_evaluation": [
+      {
+        "quality_state": "GOOD",
+        "n_samples": 16,
+        "n_positives": 10,
+        "recall": 1.0,
+        "precision": 1.0,
+        "f2": 1.0,
+        "brier_score": 0.0077,
+        "finding": "Nominal performance."
+      }
+    ],
+    "spatial_quality_evaluation": []
+  },
+  "risk_engine_impact": {
+    "total_test_evaluations": 16,
+    "policy_unchanged_count": 16,
+    "escalated_low_to_medium": 0,
+    "escalated_medium_to_high": 0,
+    "escalated_low_to_high": 0,
+    "suppressed_insufficient_data": 0
+  }
+}
