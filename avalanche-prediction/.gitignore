@@ -7,5 +7,8 @@ data/*.csv
 models/*.joblib
 input.json
 
+# Generated runtime store (recreated on service startup)
+data/avalanche_telemetry.db
+
 # Notebook checkpoints
 .ipynb_checkpoints/

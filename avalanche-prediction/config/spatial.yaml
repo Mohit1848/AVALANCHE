@@ -1,0 +1,23 @@
+spatial:
+  method: "IDW"
+  method_version: "1.0"
+  idw:
+    power: 2.0
+    default_search_radius_km: 35.0
+    min_stations: 2
+    max_stations: 6
+  quality_thresholds:
+    excellent_max_distance_km: 15.0
+    excellent_min_stations: 3
+    good_max_distance_km: 25.0
+    good_min_stations: 2
+    degraded_max_distance_km: 50.0
+  computation_limits:
+    max_bbox_span_degrees: 1.5
+    max_grid_points: 625
+    min_grid_spacing_degrees: 0.02
+    max_search_radius_km: 80.0
+  zone_aggregation:
+    high_risk_threshold_score: 70.0
+    medium_risk_threshold_score: 40.0
+    high_risk_area_escalation_fraction: 0.25

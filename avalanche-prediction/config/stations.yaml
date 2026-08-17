@@ -1,0 +1,173 @@
+# Colorado SNOTEL Telemetry Stations Configuration
+# Controls enabled telemetry stations for live ingestion, feature extraction, and prediction.
+
+stations:
+  - station_id: "335"
+    station_triplet: "335:CO:SNTL"
+    name: "Berthoud Summit"
+    zone_id: "CO_FRONT_RANGE"
+    zone_name: "Front Range"
+    latitude: 39.7980
+    longitude: -105.7780
+    elevation_m: 3444.0
+    enabled: true
+    default_slope_deg: 38.0
+    default_aspect_deg: 45.0
+    available_variables:
+      - "TOBS"   # Air Temperature
+      - "SNWD"   # Snow Depth
+      - "WTEQ"   # Snow Water Equivalent
+      - "PREC"   # Precipitation Accumulation
+
+  - station_id: "586"
+    station_triplet: "586:CO:SNTL"
+    name: "Loveland Basin"
+    zone_id: "CO_FRONT_RANGE"
+    zone_name: "Front Range"
+    latitude: 39.6739
+    longitude: -105.8972
+    elevation_m: 3475.0
+    enabled: true
+    default_slope_deg: 37.0
+    default_aspect_deg: 90.0
+    available_variables:
+      - "TOBS"
+      - "SNWD"
+      - "WTEQ"
+      - "PREC"
+
+  - station_id: "505"
+    station_triplet: "505:CO:SNTL"
+    name: "Grizzly Peak"
+    zone_id: "CO_VAIL_SUMMIT"
+    zone_name: "Vail & Summit County"
+    latitude: 39.6450
+    longitude: -105.8670
+    elevation_m: 3383.0
+    enabled: true
+    default_slope_deg: 36.0
+    default_aspect_deg: 45.0
+    available_variables:
+      - "TOBS"
+      - "SNWD"
+      - "WTEQ"
+      - "PREC"
+
+  - station_id: "531"
+    station_triplet: "531:CO:SNTL"
+    name: "Hoosier Pass"
+    zone_id: "CO_VAIL_SUMMIT"
+    zone_name: "Vail & Summit County"
+    latitude: 39.3620
+    longitude: -106.0610
+    elevation_m: 3475.0
+    enabled: true
+    default_slope_deg: 36.5
+    default_aspect_deg: 180.0
+    available_variables:
+      - "TOBS"
+      - "SNWD"
+      - "WTEQ"
+      - "PREC"
+
+  - station_id: "415"
+    station_triplet: "415:CO:SNTL"
+    name: "Copper Mountain"
+    zone_id: "CO_VAIL_SUMMIT"
+    zone_name: "Vail & Summit County"
+    latitude: 39.4750
+    longitude: -106.1520
+    elevation_m: 3216.0
+    enabled: true
+    default_slope_deg: 35.0
+    default_aspect_deg: 45.0
+    available_variables:
+      - "TOBS"
+      - "SNWD"
+      - "WTEQ"
+      - "PREC"
+
+  - station_id: "485"
+    station_triplet: "485:CO:SNTL"
+    name: "Fremont Pass"
+    zone_id: "CO_SAWATCH"
+    zone_name: "Sawatch Range"
+    latitude: 39.3780
+    longitude: -106.1880
+    elevation_m: 3475.0
+    enabled: true
+    default_slope_deg: 38.5
+    default_aspect_deg: 90.0
+    available_variables:
+      - "TOBS"
+      - "SNWD"
+      - "WTEQ"
+      - "PREC"
+
+  - station_id: "542"
+    station_triplet: "542:CO:SNTL"
+    name: "Independence Pass"
+    zone_id: "CO_ASPEN"
+    zone_name: "Aspen"
+    latitude: 39.1080
+    longitude: -106.6020
+    elevation_m: 3688.0
+    enabled: true
+    default_slope_deg: 39.0
+    default_aspect_deg: 45.0
+    available_variables:
+      - "TOBS"
+      - "SNWD"
+      - "WTEQ"
+      - "PREC"
+
+  - station_id: "737"
+    station_triplet: "737:CO:SNTL"
+    name: "Schofield Pass"
+    zone_id: "CO_GUNNISON"
+    zone_name: "Gunnison / Crested Butte"
+    latitude: 39.0150
+    longitude: -107.0480
+    elevation_m: 3261.0
+    enabled: true
+    default_slope_deg: 36.0
+    default_aspect_deg: 45.0
+    available_variables:
+      - "TOBS"
+      - "SNWD"
+      - "WTEQ"
+      - "PREC"
+
+  - station_id: "709"
+    station_triplet: "709:CO:SNTL"
+    name: "Red Mountain Pass"
+    zone_id: "CO_SAN_JUAN"
+    zone_name: "San Juan Mountains"
+    latitude: 37.8990
+    longitude: -107.7140
+    elevation_m: 3414.0
+    enabled: true
+    default_slope_deg: 41.0
+    default_aspect_deg: 90.0
+    available_variables:
+      - "TOBS"
+      - "SNWD"
+      - "WTEQ"
+      - "PREC"
+
+  - station_id: "1030"
+    station_triplet: "1030:CO:SNTL"
+    name: "Arapaho Ridge"
+    zone_id: "CO_STEAMBOAT"
+    zone_name: "Steamboat & Flat Tops"
+    latitude: 40.3510
+    longitude: -106.3810
+    elevation_m: 3341.0
+    enabled: true
+    default_slope_deg: 34.0
+    default_aspect_deg: 90.0
+    available_variables:
+      - "TOBS"
+      - "SNWD"
+      - "WTEQ"
+      - "PREC"
