@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Activity, Cpu, Radio, Clock } from 'lucide-react';
+import { Shield, Activity, Cpu, Radio, Clock, RefreshCw } from 'lucide-react';
 import type { HealthStatus, TelemetryFreshnessStatus, GeographicDomain, PredictionContext } from '../../types';
 import { formatTelemetryAge, getTelemetryBadgeColor } from '../../utils/formatters';
 
@@ -13,6 +13,8 @@ interface HeaderProps {
   setIsLivePolling: (v: boolean) => void;
   selectedDomain: GeographicDomain;
   setSelectedDomain: (d: GeographicDomain) => void;
+  onSync?: () => Promise<void> | void;
+  isSyncing?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,13 +27,19 @@ export const Header: React.FC<HeaderProps> = ({
   setIsLivePolling,
   selectedDomain,
   setSelectedDomain,
+  onSync,
+  isSyncing = false,
 }) => {
   const isOnline = health?.status === 'ok' || health?.status === 'degraded';
   const isColorado = selectedDomain === 'COLORADO';
   const isModelLoaded = isColorado ? (health?.model_loaded ?? true) : false;
-  const telStatus = context?.freshness_state || freshness?.overall_status || 'GOOD';
+  const telStatus = context?.freshness_state || freshness?.overall_status || 'STALE';
   const ageMin = context?.telemetry_age_minutes ?? freshness?.age_minutes ?? health?.telemetry_age_minutes ?? null;
   const formattedAge = formatTelemetryAge(ageMin);
+
+  const stationsLive = freshness?.stations_healthy ?? 0;
+  const stationsDegraded = freshness?.stations_degraded ?? 0;
+  const stationsStale = freshness?.stations_stale ?? (freshness?.stations_total ?? 10) - stationsLive - stationsDegraded;
 
   const getDomainSubtext = () => {
     switch (selectedDomain) {
@@ -191,11 +199,44 @@ export const Header: React.FC<HeaderProps> = ({
           <span>TELEMETRY: {isColorado ? telStatus : 'PENDING AWS'}</span>
         </div>
 
+        {/* SOURCE PROVIDER */}
+        {isColorado && (
+          <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-300 text-[11px] shrink-0 font-mono">
+            <span className="text-slate-400">SOURCE:</span>
+            <span className="text-cyan-300 font-bold">NRCS AWDB</span>
+          </div>
+        )}
+
         {/* TELEMETRY AGE */}
-        <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-300 text-[11px] shrink-0">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-300 text-[11px] shrink-0">
           <Clock className="w-3.5 h-3.5 text-cyan-400" />
           <span>Age: {formattedAge}</span>
         </div>
+
+        {/* STATIONS BREAKDOWN */}
+        {isColorado && (
+          <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-300 shrink-0 font-mono">
+            <span className="text-slate-500 font-bold">STATIONS:</span>
+            <span className={stationsLive > 0 ? 'text-emerald-400 font-bold' : 'text-slate-400'}>{stationsLive} LIVE</span>
+            <span className="text-slate-600">/</span>
+            <span className={stationsDegraded > 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}>{stationsDegraded} DEGRADED</span>
+            <span className="text-slate-600">/</span>
+            <span className={stationsStale > 0 ? 'text-red-400 font-bold' : 'text-slate-400'}>{stationsStale} STALE</span>
+          </div>
+        )}
+
+        {/* SYNC NOW BUTTON */}
+        {isColorado && onSync && (
+          <button
+            onClick={() => onSync()}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-600 text-cyan-300 text-[11px] font-bold transition-all shrink-0 disabled:opacity-50"
+            title="Trigger manual live synchronization from USDA NRCS AWDB"
+          >
+            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-cyan-200' : 'text-cyan-400'}`} />
+            <span>{isSyncing ? 'SYNCING...' : 'SYNC NOW'}</span>
+          </button>
+        )}
       </div>
     </header>
   );

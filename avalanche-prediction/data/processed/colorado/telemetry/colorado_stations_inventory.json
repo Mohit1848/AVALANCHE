@@ -1,0 +1,46 @@
+{
+  "sync_timestamp": "2026-08-20T12:00:00Z",
+  "provider": "NRCS_AWDB",
+  "total_configured": 10,
+  "total_synchronized": 1,
+  "unmatched_count": 9,
+  "unmatched_stations": [
+    "586:CO:SNTL",
+    "505:CO:SNTL",
+    "531:CO:SNTL",
+    "415:CO:SNTL",
+    "485:CO:SNTL",
+    "542:CO:SNTL",
+    "737:CO:SNTL",
+    "709:CO:SNTL",
+    "1030:CO:SNTL"
+  ],
+  "provenance": {
+    "provider": "NRCS_AWDB",
+    "requested_at": "2026-08-20T12:00:00Z",
+    "sha256": "abc123hash"
+  },
+  "stations": [
+    {
+      "station_id": "335",
+      "station_triplet": "335:CO:SNTL",
+      "name": "Berthoud Summit",
+      "awdb_name": "Berthoud Summit",
+      "zone_id": "CO_FRONT_RANGE",
+      "zone_name": "Front Range",
+      "latitude": 39.80364,
+      "longitude": -105.77786,
+      "elevation_m": 3444.2,
+      "elevation_ft": 11300.0,
+      "network": "SNTL",
+      "state": "CO",
+      "county": null,
+      "huc": null,
+      "data_timezone": -8.0,
+      "shef_id": null,
+      "active_status": "ACTIVE",
+      "provider": "USDA_NRCS_AWDB",
+      "last_synced_at": "2026-08-20T12:00:00Z"
+    }
+  ]
+}

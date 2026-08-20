@@ -42,12 +42,18 @@ export function formatTelemetryAgeCompact(ageMinutes: number | null | undefined)
 
 export function getTelemetryBadgeColor(st: string): string {
   switch (st) {
+    case 'LIVE':
     case 'GOOD':
-      return 'bg-emerald-950/60 border-emerald-800 text-emerald-300';
+      return 'bg-emerald-950/80 border-emerald-500 text-emerald-300 shadow-sm shadow-emerald-950';
     case 'DEGRADED':
-      return 'bg-amber-950/60 border-amber-800 text-amber-300';
+    case 'RECENT':
+      return 'bg-amber-950/80 border-amber-500 text-amber-300';
     case 'STALE':
-      return 'bg-red-950/60 border-red-800 text-red-300 animate-pulse';
+      return 'bg-red-950/90 border-red-500 text-red-300';
+    case 'HISTORICAL':
+      return 'bg-slate-900 border-slate-700 text-slate-400';
+    case 'OFFLINE':
+      return 'bg-red-950/60 border-red-800 text-red-400';
     case 'INSUFFICIENT':
     case 'INSUFFICIENT_DATA':
     default:

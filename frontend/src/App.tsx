@@ -483,6 +483,36 @@ export function App() {
     telemetry_age_minutes: predictionContext.telemetry_age_minutes ?? undefined,
   };
 
+  const [isSyncingTelemetry, setIsSyncingTelemetry] = useState<boolean>(false);
+
+  const handleSyncColoradoTelemetry = async () => {
+    setIsSyncingTelemetry(true);
+    try {
+      await api.syncColoradoTelemetry();
+      const [hRes, fRes] = await Promise.all([
+        api.getHealth(),
+        api.getTelemetryFreshness(),
+      ]);
+      setHealth(hRes);
+      setFreshness(fRes);
+      if (predictionContext.target_type === 'STATION' && predictionContext.target_id) {
+        loadStationAssessment(
+          predictionContext.target_id,
+          predictionContext.target_name,
+          predictionContext.latitude,
+          predictionContext.longitude,
+          predictionContext.elevation,
+          predictionContext.slope,
+          predictionContext.aspect
+        );
+      }
+    } catch (err) {
+      console.error('Colorado telemetry sync error:', err);
+    } finally {
+      setIsSyncingTelemetry(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* 1. Header & Diagnostics */}
@@ -496,6 +526,8 @@ export function App() {
         setIsLivePolling={setIsLivePolling}
         selectedDomain={selectedDomain}
         setSelectedDomain={setSelectedDomain}
+        onSync={handleSyncColoradoTelemetry}
+        isSyncing={isSyncingTelemetry}
       />
 
       {/* 2. Research Disclaimer Banner */}
@@ -707,6 +739,8 @@ export function App() {
               ) : (
                 <RiskAssessmentPanel
                   context={predictionContext}
+                  onSync={handleSyncColoradoTelemetry}
+                  isSyncing={isSyncingTelemetry}
                   onRefresh={() => {
                     if (predictionContext.target_type === 'STATION') {
                       loadStationAssessment(

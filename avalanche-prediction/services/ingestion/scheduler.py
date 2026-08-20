@@ -22,23 +22,17 @@ from services.ingestion.snotel_worker import (
 from services.ingestion.storage import storage_manager
 
 
-def calculate_telemetry_age_minutes(last_timestamp: Optional[str]) -> Optional[int]:
-    """Calculate the age of an observation timestamp relative to current UTC time."""
-    if not last_timestamp:
-        return None
-    try:
-        ts = pd.to_datetime(last_timestamp, utc=True)
-        now = datetime.datetime.now(datetime.timezone.utc)
-        diff_seconds = (now - ts.to_pydatetime()).total_seconds()
-        return max(0, int(diff_seconds // 60))
-    except Exception:
-        return None
+from ml.data_acquisition.telemetry_quality import (
+    calculate_telemetry_age_minutes,
+    classify_freshness,
+)
+from ml.data_acquisition.colorado_live_ingestion import run_colorado_telemetry_ingestion
 
 
 def get_freshness_status(age_minutes: Optional[int]) -> str:
     """Categorize data freshness based on engineering thresholds.
 
-    - <= 120 min (2h): GOOD (Fresh)
+    - <= 120 min (2h): GOOD
     - 120 min - 360 min (6h): DEGRADED
     - > 360 min (6h): STALE
     - None: INSUFFICIENT
@@ -206,6 +200,23 @@ def execute_live_prediction_cycle() -> List[Dict[str, Any]]:
         predictions_generated.append(pred_record)
 
     return predictions_generated
+
+
+def start_background_telemetry_scheduler(interval_seconds: int = 900) -> None:
+    """Start daemon thread for periodic live telemetry refresh from USDA NRCS AWDB."""
+    import threading
+    import time
+    
+    def _worker():
+        while True:
+            try:
+                run_colorado_telemetry_ingestion()
+            except Exception as e:
+                print(f"Notice: Background telemetry refresh encountered error: {e}")
+            time.sleep(interval_seconds)
+
+    t = threading.Thread(target=_worker, daemon=True, name="AWDBBackgroundSync")
+    t.start()
 
 
 # Seed database on module import

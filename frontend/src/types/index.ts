@@ -592,4 +592,41 @@ export interface IndianRegionsResponse {
   regions: IndianRegion[];
 }
 
+export interface ColoradoTelemetryStatus {
+  provider: string;
+  status: 'LIVE' | 'DEGRADED' | 'STALE' | 'HISTORICAL' | 'OFFLINE';
+  last_successful_sync: string | null;
+  latest_observation_utc: string | null;
+  latest_observation_age_minutes: number | null;
+  stations_total: number;
+  stations_live: number;
+  stations_degraded: number;
+  stations_stale: number;
+  stations_historical: number;
+  stations_missing: number;
+}
+
+export interface ColoradoStationOverview {
+  station_id: string;
+  station_triplet: string;
+  name: string;
+  zone_id: string;
+  zone_name: string;
+  latitude: number;
+  longitude: number;
+  elevation_m: number;
+  freshness_state: 'LIVE' | 'DEGRADED' | 'STALE' | 'HISTORICAL' | 'MISSING';
+  observation_age_minutes: number | null;
+  last_observation_utc: string | null;
+  provider: string;
+  latest_values: {
+    temperature?: number | null;
+    snow_depth?: number | null;
+    snow_water_equivalent?: number | null;
+    precipitation?: number | null;
+    wind_speed?: number | null;
+  };
+}
+
+
 

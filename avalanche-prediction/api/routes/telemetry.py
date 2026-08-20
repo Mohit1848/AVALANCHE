@@ -6,12 +6,79 @@ from api.dependencies import get_inference_engine
 from api.schemas import StationTelemetryBatchRequest, RiskPredictionResponse, ErrorResponse
 from api.services.feature_service import process_telemetry_batch
 from api.services.inference_service import AvalancheInferenceEngine
+from api.services.live_telemetry_service import (
+    get_colorado_telemetry_status,
+    get_colorado_stations_overview,
+    get_colorado_station_detail,
+    trigger_manual_colorado_sync,
+    get_colorado_telemetry_health,
+)
 from services.ingestion.scheduler import get_telemetry_freshness_report, execute_live_prediction_cycle
 from services.ingestion.storage import storage_manager
 from services.ingestion.snotel_worker import ingest_station_telemetry_batch, load_configured_stations
+from ml.data_acquisition.telemetry_quality import calculate_telemetry_age_minutes, classify_freshness
 
 router = APIRouter(prefix="/telemetry", tags=["Telemetry Stream & Freshness"])
 
+
+# ============================================================================
+# Colorado NRCS AWDB Live Telemetry Specific Endpoints
+# ============================================================================
+
+@router.get("/colorado/status")
+def get_colorado_live_status():
+    """Retrieve overall status, freshness breakdown, and latest sync info for Colorado NRCS AWDB."""
+    try:
+        return get_colorado_telemetry_status()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve Colorado telemetry status: {exc}"
+        )
+
+
+@router.get("/colorado/stations")
+def get_colorado_stations_list():
+    """Retrieve normalized Colorado SNOTEL station metadata, freshness state, and latest readings."""
+    try:
+        return get_colorado_stations_overview()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve Colorado stations overview: {exc}"
+        )
+
+
+@router.get("/colorado/stations/{station_id}")
+def get_colorado_station_details(station_id: str):
+    """Retrieve detailed observation time-series, age, quality, and provenance for a Colorado station."""
+    st_data = get_colorado_station_detail(station_id)
+    if not st_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Station '{station_id}' is not in configured Colorado SNOTEL network."
+        )
+    return st_data
+
+
+@router.post("/colorado/sync")
+def sync_colorado_telemetry():
+    """Trigger manual synchronization of live Colorado telemetry from USDA NRCS AWDB."""
+    result, rate_limited = trigger_manual_colorado_sync()
+    if rate_limited:
+        return result
+    return result
+
+
+@router.get("/colorado/health")
+def get_colorado_health():
+    """Retrieve provider connectivity and ingestion health for Colorado NRCS AWDB."""
+    return get_colorado_telemetry_health()
+
+
+# ============================================================================
+# General Telemetry History & Assessment Endpoints
+# ============================================================================
 
 @router.get("/status")
 def get_telemetry_status():
@@ -88,6 +155,8 @@ def get_station_assessment(
             "current_utc": current_utc,
             "telemetry_status": "INSUFFICIENT",
             "last_observation_timestamp": None,
+            "provider": "NRCS_AWDB",
+            "telemetry_source": "USDA NRCS AWDB SNOTEL (Live Stream)",
             "features": None,
             "prediction": None,
             "rules_evaluation": [],
@@ -95,9 +164,8 @@ def get_station_assessment(
 
     latest_obs = obs_history[-1]
     obs_ts = latest_obs.get("timestamp")
-    from services.ingestion.scheduler import calculate_telemetry_age_minutes, get_freshness_status
     age_min = calculate_telemetry_age_minutes(obs_ts)
-    quality = get_freshness_status(age_min)
+    quality = classify_freshness(age_min)
 
     from api.schemas import TelemetryObservation
     obs_models = [
@@ -133,7 +201,7 @@ def get_station_assessment(
 
     pred_res = engine.predict_risk(feature_dict, domain="COLORADO", external_warnings=quality_warnings)
 
-    if quality == "STALE":
+    if quality in ("STALE", "HISTORICAL"):
         pred_res.data_quality = "STALE"
         pred_res.final_risk_level = "STALE"
         pred_res.risk_level = "STALE"
@@ -146,7 +214,7 @@ def get_station_assessment(
         prediction_available = True
         assessment_status = "CURRENT"
         suppression_reason = None
-    elif quality == "GOOD":
+    elif quality == "LIVE":
         pred_res.data_quality = "GOOD"
         prediction_available = True
         assessment_status = "CURRENT"
@@ -169,7 +237,7 @@ def get_station_assessment(
         "aspect": aspect,
         "telemetry_timestamp": obs_ts,
         "telemetry_age_minutes": age_min,
-        "data_quality": quality,
+        "data_quality": "STALE" if quality in ("STALE", "HISTORICAL") else ("GOOD" if quality == "LIVE" else quality),
         "freshness_state": quality,
         "assessment_status": assessment_status,
         "prediction_available": prediction_available,
@@ -177,6 +245,8 @@ def get_station_assessment(
         "current_utc": current_utc,
         "telemetry_status": quality,
         "last_observation_timestamp": obs_ts,
+        "provider": "NRCS_AWDB",
+        "telemetry_source": "USDA NRCS AWDB SNOTEL (Live Stream)",
         "features": feature_dict,
         "prediction": pred_res,
         "rules_evaluation": pred_res.rule_evaluations,

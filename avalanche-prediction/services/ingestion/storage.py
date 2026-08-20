@@ -66,7 +66,59 @@ class StorageManager:
                     provenance_json TEXT
                 )
             """)
+
+            # 3. Telemetry Ingestion & Provider Sync Logs
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS telemetry_sync_logs (
+                    sync_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    provider TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    sync_timestamp TEXT NOT NULL,
+                    stations_total INTEGER,
+                    stations_live INTEGER,
+                    stations_degraded INTEGER,
+                    stations_stale INTEGER,
+                    stations_failed INTEGER,
+                    total_observations_stored INTEGER,
+                    provenance_sha256 TEXT,
+                    details_json TEXT
+                )
+            """)
             conn.commit()
+
+    def record_sync_log(self, sync_data: Dict[str, Any]) -> None:
+        """Record telemetry synchronization execution log."""
+        with self._get_connection() as conn:
+            conn.execute("""
+                INSERT INTO telemetry_sync_logs (
+                    provider, status, sync_timestamp, stations_total, stations_live,
+                    stations_degraded, stations_stale, stations_failed, total_observations_stored,
+                    provenance_sha256, details_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                sync_data.get("provider", "NRCS_AWDB"),
+                sync_data.get("status", "UNKNOWN"),
+                sync_data.get("sync_timestamp", ""),
+                sync_data.get("stations_total", 0),
+                sync_data.get("stations_live", 0),
+                sync_data.get("stations_degraded", 0),
+                sync_data.get("stations_stale", 0),
+                sync_data.get("stations_failed", 0),
+                sync_data.get("total_observations_stored", 0),
+                sync_data.get("provenance_sha256"),
+                json.dumps(sync_data.get("station_reports", [])),
+            ))
+            conn.commit()
+
+    def get_latest_sync_log(self) -> Optional[Dict[str, Any]]:
+        """Retrieve most recent synchronization log."""
+        with self._get_connection() as conn:
+            row = conn.execute("SELECT * FROM telemetry_sync_logs ORDER BY sync_id DESC LIMIT 1").fetchone()
+            if not row:
+                return None
+            d = dict(row)
+            d["details"] = json.loads(d.get("details_json") or "[]")
+            return d
 
     def insert_observations(self, observations: List[Dict[str, Any]]) -> int:
         """Insert or replace telemetry observations."""
@@ -107,18 +159,26 @@ class StorageManager:
         end_ts: Optional[str] = None,
         limit: int = 120
     ) -> List[Dict[str, Any]]:
-        """Retrieve chronological telemetry time-series for a station."""
-        query = "SELECT * FROM telemetry_observations WHERE station_id = ?"
+        """Retrieve chronological telemetry time-series for a station (most recent limit observations)."""
         params: List[Any] = [str(station_id)]
+        where_clauses = ["station_id = ?"]
 
         if start_ts:
-            query += " AND timestamp >= ?"
+            where_clauses.append("timestamp >= ?")
             params.append(start_ts)
         if end_ts:
-            query += " AND timestamp <= ?"
+            where_clauses.append("timestamp <= ?")
             params.append(end_ts)
 
-        query += " ORDER BY timestamp ASC LIMIT ?"
+        where_sql = " AND ".join(where_clauses)
+        query = f"""
+            SELECT * FROM (
+                SELECT * FROM telemetry_observations
+                WHERE {where_sql}
+                ORDER BY timestamp DESC
+                LIMIT ?
+            ) ORDER BY timestamp ASC
+        """
         params.append(limit)
 
         with self._get_connection() as conn:

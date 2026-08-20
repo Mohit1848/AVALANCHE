@@ -173,7 +173,7 @@ describe('Colorado Risk Console: Single Source of Truth & Policy Consistency Sui
     expect(screen.getByText(/Berthoud Summit/i)).toBeDefined();
     expect(screen.getAllByText(/30\/100/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText('LOW').length).toBeGreaterThan(0);
-    expect(screen.getByText('GOOD')).toBeDefined();
+    expect(screen.getAllByText('GOOD').length).toBeGreaterThan(0);
     expect(screen.queryByText(/HISTORICAL DATA — LIVE PREDICTION UNAVAILABLE/i)).toBeNull();
   });
 
@@ -332,7 +332,7 @@ describe('Colorado Risk Console: Single Source of Truth & Policy Consistency Sui
     };
 
     render(<RiskAssessmentPanel context={insufficientContext} onRefresh={() => {}} />);
-    expect(screen.getByText('INSUFFICIENT')).toBeDefined();
+    expect(screen.getAllByText('INSUFFICIENT').length).toBeGreaterThan(0);
     expect(screen.getAllByText('INSUFFICIENT_DATA').length).toBeGreaterThan(0);
     expect(screen.getAllByText('UNAVAILABLE').length).toBeGreaterThan(0);
   });

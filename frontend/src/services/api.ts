@@ -200,7 +200,7 @@ export const api = {
     }
   },
 
-  // 6. Telemetry Freshness
+  // 6. Telemetry Freshness & NRCS AWDB Live Stream
   getTelemetryFreshness: async (): Promise<TelemetryFreshnessStatus> => {
     try {
       const res = await fetch(`${API_BASE_URL}/telemetry/status`);
@@ -209,7 +209,7 @@ export const api = {
     } catch {
       return {
         overall_status: 'INSUFFICIENT',
-        last_update: new Date().toISOString(),
+        last_update: 'UNAVAILABLE',
         age_minutes: 0,
         stations_total: 10,
         stations_healthy: 0,
@@ -222,6 +222,36 @@ export const api = {
 
   getTelemetryStatus: async (): Promise<TelemetryFreshnessStatus> => {
     return api.getTelemetryFreshness();
+  },
+
+  getColoradoTelemetryStatus: async () => {
+    const res = await fetch(`${API_BASE_URL}/telemetry/colorado/status`);
+    if (!res.ok) throw new Error(`Colorado status error: ${res.statusText}`);
+    return await res.json();
+  },
+
+  getColoradoStations: async () => {
+    const res = await fetch(`${API_BASE_URL}/telemetry/colorado/stations`);
+    if (!res.ok) throw new Error(`Colorado stations error: ${res.statusText}`);
+    return await res.json();
+  },
+
+  getColoradoStationDetail: async (stationId: string) => {
+    const res = await fetch(`${API_BASE_URL}/telemetry/colorado/stations/${stationId}`);
+    if (!res.ok) throw new Error(`Colorado station detail error: ${res.statusText}`);
+    return await res.json();
+  },
+
+  syncColoradoTelemetry: async () => {
+    const res = await fetch(`${API_BASE_URL}/telemetry/colorado/sync`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Colorado sync error: ${res.statusText}`);
+    return await res.json();
+  },
+
+  getColoradoTelemetryHealth: async () => {
+    const res = await fetch(`${API_BASE_URL}/telemetry/colorado/health`);
+    if (!res.ok) throw new Error(`Colorado health error: ${res.statusText}`);
+    return await res.json();
   },
 
   // 7. Zones, Stations, and Events
