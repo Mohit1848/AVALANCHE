@@ -3,11 +3,17 @@
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 import pandas as pd
 from api.dependencies import get_inference_engine
-from api.schemas import ModelMetadataResponse, AvalancheZoneInfo
+from api.schemas import (
+    ModelMetadataResponse,
+    AvalancheZoneInfo,
+    DomainStatusResponse,
+    CrossDomainComparisonResponse,
+)
 from api.services.inference_service import AvalancheInferenceEngine
+from ml.model_registry import model_registry, Domain, GatingState
 
 router = APIRouter(prefix="/model", tags=["Model Metadata & GIS"])
 
@@ -87,10 +93,54 @@ COLORADO_SNOTEL_STATIONS = [
 ]
 
 
+@router.get("/status", response_model=DomainStatusResponse)
+def get_domain_status(
+    domain: Optional[str] = Query("COLORADO", description="Target domain: 'COLORADO' or 'HIMALAYA'")
+):
+    """Retrieve verified model status, gating state, and metadata for requested domain."""
+    status_info = model_registry.get_domain_status(domain or "COLORADO")
+    return DomainStatusResponse(**status_info)
+
+
+@router.get("/compare", response_model=CrossDomainComparisonResponse)
+def get_cross_domain_comparison():
+    """Retrieve side-by-side scientific comparison and domain shift findings between Colorado and Himalaya."""
+    comp = model_registry.get_cross_domain_comparison()
+    return CrossDomainComparisonResponse(**comp)
+
+
 @router.get("/metadata", response_model=ModelMetadataResponse)
-def get_model_metadata(engine: AvalancheInferenceEngine = Depends(get_inference_engine)):
-    """Retrieve active ML model version, training provenance, and validation metrics."""
+def get_model_metadata(
+    domain: Optional[str] = Query("COLORADO", description="Target domain: 'COLORADO' or 'HIMALAYA'"),
+    engine: AvalancheInferenceEngine = Depends(get_inference_engine)
+):
+    """Retrieve active ML model version, training provenance, and validation metrics for the domain."""
+    norm_domain = model_registry.normalize_domain(domain)
+
+    if norm_domain in [Domain.HIMALAYA, Domain.INDIA]:
+        return ModelMetadataResponse(
+            domain="HIMALAYA",
+            model_name="Himalayan Avalanche Domain (Uninitialized)",
+            model_version="himalaya_avalanche_uninitialized",
+            feature_schema_version="v2_spatiotemporal_17f",
+            training_seasons=[],
+            total_training_records=0,
+            features=engine.feature_columns,
+            calibration_method="Not Calibrated (DATA_AUDITED / INSUFFICIENT_DATA)",
+            validation_strategy="Gated (Pending Real DGRE/SASE Ingestion)",
+            operating_threshold=0.40,
+            metrics={
+                "recall": 0.0,
+                "precision": 0.0,
+                "f2": 0.0,
+                "pr_auc": 0.0,
+            },
+            feature_importance=[],
+            disclaimer="Research Decision-Support Service. Himalayan domain is in GEOGRAPHIC_ONLY / INSUFFICIENT_DATA mode."
+        )
+
     return ModelMetadataResponse(
+        domain="COLORADO",
         model_name="Calibrated Random Forest Classifier",
         model_version=engine.model_version,
         feature_schema_version="v2_spatiotemporal_17f",
@@ -127,8 +177,34 @@ def get_model_metadata(engine: AvalancheInferenceEngine = Depends(get_inference_
 
 
 @router.get("/scientific-evaluation")
-def get_scientific_evaluation_report():
-    """Retrieve full reproducible Phase 6 scientific model evaluation results and curves."""
+def get_scientific_evaluation_report(
+    domain: Optional[str] = Query("COLORADO", description="Target domain: 'COLORADO' or 'HIMALAYA'")
+):
+    """Retrieve full reproducible scientific model evaluation results and curves."""
+    norm_domain = model_registry.normalize_domain(domain)
+
+    if norm_domain in [Domain.HIMALAYA, Domain.INDIA]:
+        return {
+            "status": "ok",
+            "domain": "HIMALAYA",
+            "title": "HIMALAYAN DOMAIN SCIENTIFIC GATING & READINESS REPORT",
+            "gating_state": "DATA_AUDITED",
+            "model_status": "INSUFFICIENT_DATA",
+            "metrics": {
+                "event_count": 0,
+                "background_count": 0,
+                "seasons_count": 0,
+                "stations_count": 0,
+                "readiness_verdict": "NOT_READY",
+            },
+            "calibration": None,
+            "threshold_tradeoffs": [],
+            "model_comparison": [],
+            "feature_stability": [],
+            "spatial_validation": None,
+            "disclaimer": "Himalayan domain has not passed the data readiness gate. No model has been trained or calibrated.",
+        }
+
     metrics_path = REPORTS_DIR / "metrics.json"
     calibration_path = REPORTS_DIR / "calibration.json"
     thresholds_path = REPORTS_DIR / "threshold_analysis.csv"
@@ -166,6 +242,7 @@ def get_scientific_evaluation_report():
 
     return {
         "status": "ok",
+        "domain": "COLORADO",
         "title": "SCIENTIFIC MODEL VALIDATION & FORECAST RELIABILITY",
         "metrics": metrics_data,
         "calibration": calibration_data,

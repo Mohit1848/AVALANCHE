@@ -221,3 +221,25 @@ class TestEndToEndApiAndPersistence:
         assert len(history) >= 1
         preds = fresh_manager.get_predictions(station_id="586", limit=10)
         assert len(preds) >= 1
+
+    def test_station_assessment_freshness_authoritative_contract(self):
+        """Verify that /telemetry/{station_id}/assessment returns authoritative freshness attributes and suppresses stale predictions."""
+        res = client.get("/telemetry/335/assessment")
+        assert res.status_code == 200
+        data = res.json()
+        assert "telemetry_timestamp" in data
+        assert "telemetry_age_minutes" in data
+        assert "data_quality" in data
+        assert "freshness_state" in data
+        assert "assessment_status" in data
+        assert "prediction_available" in data
+        assert "current_utc" in data
+
+        if data["freshness_state"] == "STALE":
+            assert data["data_quality"] == "STALE"
+            assert data["prediction_available"] is False
+            assert data["assessment_status"] == "SUPPRESSED"
+            assert data["prediction"]["final_risk_level"] == "STALE"
+            assert data["prediction"]["data_quality"] == "STALE"
+            assert any("STALE" in w for w in data["prediction"]["warnings"])
+

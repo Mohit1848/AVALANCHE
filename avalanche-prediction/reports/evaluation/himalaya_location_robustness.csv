@@ -1,0 +1,9 @@
+held_out_station,station_region,sample_size_N,events_count,backgrounds_count,status,recall,f2_score,false_negative_rate,brier_score,notes
+DGRE-DHUNDI,Pir Panjal (Kullu / Manali),7,3,4,VALID_SAMPLE,1.0,1.0,0.0,0.0,Sufficient station sample
+DGRE-DRAS,Saltoro Range (Karakoram),7,3,4,VALID_SAMPLE,1.0,1.0,0.0,0.0,Sufficient station sample
+DGRE-GULMARG,Pir Panjal (Gulmarg Sector),10,5,5,VALID_SAMPLE,1.0,1.0,0.0,0.0,Sufficient station sample
+DGRE-JOSHIMATH,Garhwal Himalaya (Uttarkashi),8,5,3,VALID_SAMPLE,1.0,1.0,0.0,0.0,Sufficient station sample
+IMD-BANIHAL,Pir Panjal Range (Banihal Sector),4,3,1,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,Sample size N < 5 is statistically uninformative. Guard enforced.
+IMD-GANGTOK,Eastern Himalaya (North Sikkim),1,1,0,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,Sample size N < 5 is statistically uninformative. Guard enforced.
+IMD-KEYLONG,Lahaul & Spiti (Chandra Valley),5,2,3,VALID_SAMPLE,1.0,1.0,0.0,0.0001,Sufficient station sample
+IMD-LEH,Ladakh Range (Leh Corridor),2,2,0,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,INSUFFICIENT_SAMPLE,Sample size N < 5 is statistically uninformative. Guard enforced.

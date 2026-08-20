@@ -2,8 +2,18 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
+
+
+class GeographicDomain(str, Enum):
+    COLORADO = "COLORADO"
+    HIMALAYA = "HIMALAYA"
+    INDIA = "INDIA"
+    NEPAL = "NEPAL"
+    BHUTAN = "BHUTAN"
+    PAKISTAN = "PAKISTAN"
 
 
 class HealthResponse(BaseModel):
@@ -19,10 +29,13 @@ class HealthResponse(BaseModel):
     thresholds: Dict[str, float] = Field(..., description="Risk tier thresholds")
     schema_status: str = Field(..., description="Feature schema alignment status ('SYNCHRONIZED', 'SCHEMA_WARNING')")
     telemetry_age_minutes: Optional[int] = Field(None, description="Age of most recent telemetry observation in minutes")
+    active_domain: Optional[str] = Field("COLORADO", description="Active queried geographic domain")
+    domain_gating_state: Optional[str] = Field("MODEL_ENABLED", description="Active domain model gating state")
     disclaimer: str = Field(..., description="Operational non-autonomous research disclaimer")
 
 
 class PointPredictionRequest(BaseModel):
+    domain: Optional[str] = Field("COLORADO", description="Target domain: 'COLORADO' or 'HIMALAYA'")
     latitude: float = Field(..., ge=-90.0, le=90.0, description="Latitude in decimal degrees")
     longitude: float = Field(..., ge=-180.0, le=180.0, description="Longitude in decimal degrees")
     elevation: Optional[float] = Field(3400.0, ge=0.0, le=9000.0, description="Elevation in meters")
@@ -54,6 +67,7 @@ class TelemetryObservation(BaseModel):
 
 
 class StationTelemetryBatchRequest(BaseModel):
+    domain: Optional[str] = Field("COLORADO", description="Target domain: 'COLORADO' or 'HIMALAYA'")
     station_id: str = Field(..., description="SNOTEL or weather station ID")
     station_name: Optional[str] = Field(None, description="Station name")
     latitude: float = Field(..., ge=-90.0, le=90.0, description="Station latitude")
@@ -68,6 +82,7 @@ class StationTelemetryBatchRequest(BaseModel):
 
 
 class RiskPredictionResponse(BaseModel):
+    domain: Optional[str] = Field("COLORADO", description="Target geographic domain")
     model_risk_score: Optional[float] = Field(None, description="Raw ML-derived risk score (0-100) before policy rules")
     final_risk_score: Optional[float] = Field(None, description="Final risk score (0-100) after deterministic policy rules")
     model_risk_level: str = Field(..., description="ML classification: 'LOW', 'MEDIUM', 'HIGH', or 'INSUFFICIENT_DATA'")
@@ -81,15 +96,18 @@ class RiskPredictionResponse(BaseModel):
     calibrated_probability: Optional[float] = Field(None, description="Probability calibrated via TimeSeriesSplit")
     model_version: str = Field(..., description="Model artifact training version")
     operating_threshold: float = Field(0.40, description="Operational medium/high boundary threshold")
-    thresholds: Dict[str, float] = Field(..., description="Configured thresholds for risk level boundaries")
+    thresholds: Dict[str, float] = Field(default_factory=lambda: {"medium": 0.40, "high": 0.70}, description="Configured thresholds for risk level boundaries")
+    rule_evaluations: List[Dict[str, Any]] = Field(default_factory=list, description="Evaluated deterministic engineering safety rules")
+    features: Optional[Dict[str, Any]] = Field(default=None, description="Actual physical and terrain features evaluated")
     provenance: Dict[str, Any] = Field(default_factory=dict, description="Metadata trace including sources and calibration info")
     disclaimer: str = Field(
-        "Decision-support research prototype. Not an official avalanche bulletin. Use official CAIC/regional forecasts for travel safety.",
+        "Decision-support research prototype. Not an official avalanche bulletin. Use official regional forecasts for travel safety.",
         description="Public safety non-autonomous research notice"
     )
 
 
 class ModelMetadataResponse(BaseModel):
+    domain: str = "COLORADO"
     model_name: str
     model_version: str
     feature_schema_version: str
@@ -113,18 +131,15 @@ class AvalancheZoneInfo(BaseModel):
     primary_snotel_stations: List[str]
 
 
-# =====================================================================
-# Phase 5: Spatial Intelligence Schemas
-# =====================================================================
-
 class SpatialPredictionRequest(BaseModel):
+    domain: Optional[str] = Field("COLORADO", description="Target domain: 'COLORADO' or 'HIMALAYA'")
     min_latitude: float = Field(..., ge=-90.0, le=90.0, description="Bounding box minimum latitude")
     max_latitude: float = Field(..., ge=-90.0, le=90.0, description="Bounding box maximum latitude")
     min_longitude: float = Field(..., ge=-180.0, le=180.0, description="Bounding box minimum longitude")
     max_longitude: float = Field(..., ge=-180.0, le=180.0, description="Bounding box maximum longitude")
     grid_spacing_degrees: Optional[float] = Field(0.04, ge=0.02, le=0.5, description="Grid interval in degrees")
     target_timestamp: Optional[str] = Field(None, description="Assessment target timestamp (UTC ISO-8601)")
-    search_radius_km: Optional[float] = Field(35.0, ge=5.0, le=80.0, description="IDW search radius in km")
+    search_radius_km: Optional[float] = Field(None, ge=5.0, le=120.0, description="IDW search radius in km (defaults by domain)")
     power: Optional[float] = Field(2.0, ge=1.0, le=4.0, description="IDW distance power exponent")
     interpolation_method: Optional[str] = Field("IDW", description="Spatial interpolation method ('IDW')")
 
@@ -156,6 +171,7 @@ class SpatialGridPoint(BaseModel):
 
 class SpatialPredictionGridResponse(BaseModel):
     title: str = "RESEARCH RISK SURFACE"
+    domain: str = "COLORADO"
     bounds: Dict[str, float]
     grid_points_count: int
     timestamp: str
@@ -169,13 +185,14 @@ class SpatialPredictionGridResponse(BaseModel):
     summary: Dict[str, Any]
     disclaimer: str = (
         "Interpolated/model-derived research visualization — not an official avalanche forecast. "
-        "Use official CAIC avalanche bulletins for all travel decisions."
+        "Use official regional avalanche bulletins for all travel decisions."
     )
 
 
 class ZoneRiskSummary(BaseModel):
     zone_id: str
     zone_name: str
+    domain: Optional[str] = "COLORADO"
     timestamp: str
     zone_risk_level: str
     zone_median_risk_score: float
@@ -250,3 +267,25 @@ class IndianRegionsResponse(BaseModel):
     count: int
     regions: List[IndianRegionRecord]
 
+
+class DomainStatusResponse(BaseModel):
+    domain: str
+    display_name: str
+    gating_state: str
+    model_loaded: bool
+    model_status: str
+    model_version: str
+    dataset_version: str
+    feature_schema_version: str
+    calibration_status: str
+    operating_threshold: float
+    thresholds: Dict[str, float]
+    disclaimer: str
+
+
+class CrossDomainComparisonResponse(BaseModel):
+    comparison_title: str
+    scientific_disclaimer: str
+    domains: Dict[str, DomainStatusResponse]
+    metrics_table: List[Dict[str, Any]]
+    domain_shift_experiment: Dict[str, Any]

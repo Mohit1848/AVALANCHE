@@ -94,7 +94,10 @@ def get_telemetry_freshness_report() -> Dict[str, Any]:
                 "station_name": st["name"],
                 "zone_id": st.get("zone_id", "CO_FRONT_RANGE"),
                 "status": quality,
+                "freshness_state": quality,
+                "data_quality": quality,
                 "last_observation_timestamp": obs_ts,
+                "telemetry_timestamp": obs_ts,
                 "telemetry_age_minutes": age_min,
             })
         else:
@@ -104,7 +107,10 @@ def get_telemetry_freshness_report() -> Dict[str, Any]:
                 "station_name": st["name"],
                 "zone_id": st.get("zone_id", "CO_FRONT_RANGE"),
                 "status": "INSUFFICIENT",
+                "freshness_state": "INSUFFICIENT",
+                "data_quality": "INSUFFICIENT",
                 "last_observation_timestamp": None,
+                "telemetry_timestamp": None,
                 "telemetry_age_minutes": None,
             })
             warnings.append(f"Station {st['name']} ({st_id}) has no recorded observations.")
@@ -118,7 +124,7 @@ def get_telemetry_freshness_report() -> Dict[str, Any]:
     return {
         "overall_status": overall_status,
         "last_update": latest_global_ts or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "age_minutes": min_age_minutes if min_age_minutes != 999999 else 38,
+        "age_minutes": min_age_minutes if min_age_minutes != 999999 else None,
         "stations_total": total_stations,
         "stations_healthy": healthy_count,
         "stations_degraded": degraded_count,

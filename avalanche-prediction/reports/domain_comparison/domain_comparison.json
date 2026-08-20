@@ -1,0 +1,81 @@
+{
+  "colorado": {
+    "record_count": 96,
+    "events_count": 61,
+    "controls_count": 35,
+    "elevation_range_m": [
+      2987.0,
+      3840.0
+    ],
+    "elevation_mean_m": 3457.8,
+    "slope_range_deg": [
+      18.0,
+      44.0
+    ],
+    "slope_mean_deg": 31.7,
+    "temp_range_c": [
+      -14.0,
+      4.0
+    ],
+    "temp_mean_c": -7.5,
+    "snow_depth_mean_cm": 121.6,
+    "swe_mean_mm": 217.7,
+    "climate_classification": "Continental Alpine (Cold, shallow-to-medium snowpack, persistent weak layers)",
+    "station_density": "High (10+ SNOTEL stations in 150km corridor)",
+    "median_station_distance_km": 0.15
+  },
+  "himalaya": {
+    "record_count": 0,
+    "events_count": 0,
+    "controls_count": 0,
+    "status": "GEOGRAPHIC_ONLY",
+    "peak_count": 19,
+    "peak_elevation_range_m": [
+      5928,
+      8586
+    ],
+    "operational_avalanche_zone_elevation_m": [
+      2600.0,
+      5800.0
+    ],
+    "climate_classification": "Mixed Monsoon-Influenced Transitional to Dry High-Altitude Cold Desert (Karakoram / Ladakh)",
+    "station_density": "Sparse / Valley-Confined (Mountain telemetry stations spaced 40-100km apart)",
+    "expected_median_station_distance_km": "45.0 - 75.0 km (Estimated)"
+  },
+  "covariate_shifts": [
+    {
+      "feature": "Elevation (Vertical Scale)",
+      "colorado_range": "2,400m - 4,350m (Mean: ~3,450m)",
+      "himalayan_range": "2,600m - 7,816m (Starting zones commonly 3,200m - 5,500m)",
+      "shift_severity": "HIGH",
+      "impact": "Atmospheric pressure, lapse rates, and solar radiation are substantially different. Colorado elevation features cannot be directly transferred without recalibration."
+    },
+    {
+      "feature": "Orographic Precipitation & Snowpack Regimes",
+      "colorado_range": "Continental winter storms (Pacific jet stream moisture, relatively low density snow)",
+      "himalayan_range": "Western Disturbances (WD) in NW Himalaya + Monsoon incursions in Central/Eastern Himalaya",
+      "shift_severity": "CRITICAL",
+      "impact": "Storm precipitation totals during Western Disturbances can produce 50-150cm snow in 48h, far exceeding typical Colorado storm rates. Model weights learned on Colorado would severely underestimate storm loading risks in the Himalayas."
+    },
+    {
+      "feature": "Spatial Station Proximity",
+      "colorado_range": "Median distance to SNOTEL: ~2.5 km (High density)",
+      "himalayan_range": "Median distance to IMD/DGRE AWS: ~45-80 km (Sparse valley network)",
+      "shift_severity": "HIGH",
+      "impact": "IDW spatial interpolation in Himalaya requires a wider search radius (65km vs 35km) and higher uncertainty penalty."
+    },
+    {
+      "feature": "Terrain Ruggedness & Relief",
+      "colorado_range": "Mountain relief 1,000m - 1,800m valley-to-peak",
+      "himalayan_range": "Extreme relief 2,500m - 4,500m valley-to-peak",
+      "shift_severity": "HIGH",
+      "impact": "Extreme relief generates massive avalanche paths with runout distances exceeding 3-8 km, requiring distinct path modeling."
+    }
+  ],
+  "implications_for_modeling": [
+    "1. Direct Cross-Domain Transfer is Scientifically Invalid: Applying a Colorado-trained model directly to Himalayan coordinates will suffer catastrophic domain shift.",
+    "2. Independent Calibration Required: Probability distributions cannot be shared across domains.",
+    "3. Zero-Fallback Policy is Essential: When Himalayan telemetry or models are unavailable, the system must return INSUFFICIENT_DATA rather than using Colorado predictions.",
+    "4. Domain-Isolated Spatial Interpolation: IDW must strictly forbid mixing SNOTEL stations with Indian mountain stations."
+  ]
+}

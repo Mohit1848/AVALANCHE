@@ -1,17 +1,19 @@
 import React from 'react';
 import { Mountain } from 'lucide-react';
-import type { SelectedLocationState } from '../../types';
+import type { PredictionContext } from '../../types';
 
 interface TerrainPanelProps {
-  location: SelectedLocationState;
+  context: PredictionContext;
 }
 
-export const TerrainPanel: React.FC<TerrainPanelProps> = ({ location }) => {
-  const isProneSlope = location.slope >= 30.0 && location.slope <= 45.0;
+export const TerrainPanel: React.FC<TerrainPanelProps> = ({ context }) => {
+  const slope = context.slope;
+  const isProneSlope = slope !== null && slope >= 30.0 && slope <= 45.0;
 
   // Aspect compass needle angle
-  const aspectAngle = location.aspect;
-  const getAspectDirection = (deg: number) => {
+  const aspectAngle = context.aspect;
+  const getAspectDirection = (deg: number | null) => {
+    if (deg === null || isNaN(deg)) return 'N/A';
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     const idx = Math.round(deg / 45) % 8;
     return directions[idx];
@@ -26,18 +28,18 @@ export const TerrainPanel: React.FC<TerrainPanelProps> = ({ location }) => {
             TERRAIN & DIGITAL ELEVATION MODEL (DEM)
           </h3>
         </div>
-        <span className="text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-400 shrink-0">
-          Copernicus GLO-30 (30m)
+        <span className="text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-300 shrink-0 border border-slate-700">
+          {context.terrain_source || 'Copernicus GLO-30 DEM (30m)'} · STATIC TERRAIN BASELINE
         </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
-        {/* 1. Slope Angle Meter with Scientific Nuance */}
+        {/* 1. Slope Angle Meter */}
         <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2 min-w-0">
           <div className="flex justify-between items-center text-xs gap-1">
             <span className="text-slate-400 font-semibold truncate">Starting Zone Slope:</span>
             <span className={`font-mono font-bold text-sm shrink-0 ${isProneSlope ? 'text-amber-400' : 'text-slate-200'}`}>
-              {location.slope.toFixed(1)}°
+              {slope !== null ? `${slope.toFixed(1)}°` : 'N/A'}
             </span>
           </div>
 
@@ -50,12 +52,12 @@ export const TerrainPanel: React.FC<TerrainPanelProps> = ({ location }) => {
                 className={`h-full transition-all duration-300 ${
                   isProneSlope ? 'bg-amber-400' : 'bg-cyan-500'
                 }`}
-                style={{ width: `${Math.min(100, (location.slope / 60) * 100)}%` }}
+                style={{ width: slope !== null ? `${Math.min(100, (slope / 60) * 100)}%` : '0%' }}
               ></div>
             </div>
             <div className="flex justify-between text-[9px] font-mono text-slate-500">
               <span>0°</span>
-              <span className="text-amber-400 font-bold">30°–45° Prone Range (Heuristic)</span>
+              <span className="text-amber-400 font-bold">30°–45° Prone Range</span>
               <span>60°+</span>
             </div>
           </div>
@@ -66,12 +68,12 @@ export const TerrainPanel: React.FC<TerrainPanelProps> = ({ location }) => {
           )}
         </div>
 
-        {/* 2. Aspect Compass Rose with Wind-Direction Caveat */}
+        {/* 2. Aspect Compass Rose */}
         <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-2 min-w-0">
           <div className="space-y-1 min-w-0 flex-1">
             <div className="text-xs text-slate-400 font-semibold truncate">Slope Aspect:</div>
             <div className="text-base font-bold text-slate-100 font-mono">
-              {getAspectDirection(aspectAngle)} ({aspectAngle.toFixed(0)}°)
+              {aspectAngle !== null ? `${getAspectDirection(aspectAngle)} (${aspectAngle.toFixed(0)}°)` : 'N/A'}
             </div>
             <div className="text-[10px] text-slate-400 leading-tight break-words">
               Wind-loading assessment requires localized wind-direction telemetry
@@ -87,7 +89,7 @@ export const TerrainPanel: React.FC<TerrainPanelProps> = ({ location }) => {
             {/* Needle */}
             <div
               className="w-1 h-8 bg-gradient-to-t from-transparent via-cyan-400 to-red-500 rounded transition-transform duration-300"
-              style={{ transform: `rotate(${aspectAngle}deg)` }}
+              style={{ transform: `rotate(${aspectAngle ?? 0}deg)` }}
             ></div>
           </div>
         </div>
@@ -96,13 +98,15 @@ export const TerrainPanel: React.FC<TerrainPanelProps> = ({ location }) => {
         <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1 min-w-0">
           <div className="text-xs text-slate-400 font-semibold truncate">Starting Elevation:</div>
           <div className="text-base sm:text-lg font-bold text-slate-100 font-mono break-words">
-            {location.elevation.toLocaleString()} meters
-            <span className="text-xs font-normal text-slate-400 ml-1">
-              ({(location.elevation * 3.28084).toFixed(0)} ft)
-            </span>
+            {context.elevation !== null ? `${context.elevation.toLocaleString()} meters` : 'N/A'}
+            {context.elevation !== null && (
+              <span className="text-xs font-normal text-slate-400 ml-1">
+                ({(context.elevation * 3.28084).toFixed(0)} ft)
+              </span>
+            )}
           </div>
           <div className="text-[10px] font-mono text-cyan-400 truncate">
-            {location.elevation > 3500 ? 'Alpine Zone (Above Treeline)' : 'Near / Below Treeline'}
+            {context.elevation !== null && context.elevation > 3500 ? 'Alpine Zone (Above Treeline)' : 'Near / Below Treeline'}
           </div>
         </div>
       </div>

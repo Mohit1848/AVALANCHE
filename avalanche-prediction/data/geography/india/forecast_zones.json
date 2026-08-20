@@ -1,0 +1,83 @@
+{
+  "provenance": {
+    "source": "DGRE / SASE / Survey of India Avalanche Forecast Corridor Definitions",
+    "source_url": "https://www.drdo.gov.in/drdo/defence-geoinformatics-research-establishment-dgre",
+    "retrieved_at": "2026-08-20T12:00:00Z",
+    "crs": "EPSG:4326 (WGS84)",
+    "disclaimer": "Operational research forecast zones for high-altitude Himalayan corridors."
+  },
+  "zones": [
+    {
+      "zone_id": "HIM-PIR-PANJAL",
+      "name": "Pir Panjal (Gulmarg / Banihal / Jawahar Tunnel)",
+      "state": "Jammu & Kashmir",
+      "center_latitude": 34.05,
+      "center_longitude": 74.38,
+      "elevation_range_m": "2,200m – 4,400m",
+      "primary_stations": ["DGRE-GULMARG", "IMD-BANIHAL"],
+      "station_count": 2,
+      "data_quality": "PENDING_TELEMETRY_LINK",
+      "model_availability": "GEOGRAPHIC_ONLY"
+    },
+    {
+      "zone_id": "HIM-ZANSKAR-LADAKH",
+      "name": "Zanskar & Ladakh (Dras / Khardung La / Nubra)",
+      "state": "Ladakh",
+      "center_latitude": 34.42,
+      "center_longitude": 75.76,
+      "elevation_range_m": "3,200m – 6,200m",
+      "primary_stations": ["DGRE-DRAS", "IMD-LEH"],
+      "station_count": 2,
+      "data_quality": "PENDING_TELEMETRY_LINK",
+      "model_availability": "GEOGRAPHIC_ONLY"
+    },
+    {
+      "zone_id": "HIM-ROHTANG-LAHAUL",
+      "name": "Rohtang & Lahaul (Atal Tunnel / Keylong / Baralacha La)",
+      "state": "Himachal Pradesh",
+      "center_latitude": 32.37,
+      "center_longitude": 77.24,
+      "elevation_range_m": "2,500m – 5,500m",
+      "primary_stations": ["DGRE-DHUNDI", "IMD-KEYLONG"],
+      "station_count": 2,
+      "data_quality": "PENDING_TELEMETRY_LINK",
+      "model_availability": "GEOGRAPHIC_ONLY"
+    },
+    {
+      "zone_id": "HIM-DHAULADHAR",
+      "name": "Dhauladhar & Kangra Range",
+      "state": "Himachal Pradesh",
+      "center_latitude": 32.22,
+      "center_longitude": 76.32,
+      "elevation_range_m": "2,000m – 4,800m",
+      "primary_stations": ["IMD-DHARAMSHALA"],
+      "station_count": 1,
+      "data_quality": "PENDING_TELEMETRY_LINK",
+      "model_availability": "GEOGRAPHIC_ONLY"
+    },
+    {
+      "zone_id": "HIM-GARHWAL-KUMAON",
+      "name": "Garhwal & Kumaon (Badrinath / Hemkund / Nanda Devi Corridor)",
+      "state": "Uttarakhand",
+      "center_latitude": 30.74,
+      "center_longitude": 79.49,
+      "elevation_range_m": "2,800m – 6,500m",
+      "primary_stations": ["DGRE-JOSHIMATH", "IMD-BADRINATH"],
+      "station_count": 2,
+      "data_quality": "PENDING_TELEMETRY_LINK",
+      "model_availability": "GEOGRAPHIC_ONLY"
+    },
+    {
+      "zone_id": "HIM-NORTH-SIKKIM",
+      "name": "North Sikkim & Kangchenjunga Corridor",
+      "state": "Sikkim",
+      "center_latitude": 27.70,
+      "center_longitude": 88.50,
+      "elevation_range_m": "3,000m – 7,000m",
+      "primary_stations": ["IMD-GANGTOK"],
+      "station_count": 1,
+      "data_quality": "PENDING_TELEMETRY_LINK",
+      "model_availability": "GEOGRAPHIC_ONLY"
+    }
+  ]
+}

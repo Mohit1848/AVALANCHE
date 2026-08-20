@@ -1,0 +1,190 @@
+{
+  "held_out_test_metrics_2023_2024": {
+    "recall": 1.0,
+    "precision": 1.0,
+    "f1_score": 1.0,
+    "f2_score": 1.0,
+    "specificity": 1.0,
+    "false_negative_rate": 0.0,
+    "pr_auc": 1.0,
+    "roc_auc": 1.0,
+    "brier_score": 0.0151,
+    "expected_calibration_error": 0.1226,
+    "confusion_matrix": {
+      "tn": 2,
+      "fp": 0,
+      "fn": 0,
+      "tp": 4
+    }
+  },
+  "temporal_walk_forward_metrics": {
+    "total_folds": 6,
+    "mean_recall": 1.0,
+    "mean_f2_score": 1.0,
+    "mean_brier_score": 0.002,
+    "folds": [
+      {
+        "fold_index": 1,
+        "train_seasons_count": 4,
+        "test_season": "2018-2019",
+        "test_samples": 4,
+        "recall": 1.0,
+        "precision": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.005
+      },
+      {
+        "fold_index": 2,
+        "train_seasons_count": 5,
+        "test_season": "2019-2020",
+        "test_samples": 4,
+        "recall": 1.0,
+        "precision": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0004
+      },
+      {
+        "fold_index": 3,
+        "train_seasons_count": 6,
+        "test_season": "2020-2021",
+        "test_samples": 5,
+        "recall": 1.0,
+        "precision": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0
+      },
+      {
+        "fold_index": 4,
+        "train_seasons_count": 7,
+        "test_season": "2021-2022",
+        "test_samples": 4,
+        "recall": 1.0,
+        "precision": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0036
+      },
+      {
+        "fold_index": 5,
+        "train_seasons_count": 8,
+        "test_season": "2022-2023",
+        "test_samples": 5,
+        "recall": 1.0,
+        "precision": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0029
+      },
+      {
+        "fold_index": 6,
+        "train_seasons_count": 9,
+        "test_season": "2023-2024",
+        "test_samples": 6,
+        "recall": 1.0,
+        "precision": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0001
+      }
+    ]
+  },
+  "spatial_generalization_metrics": {
+    "validation_strategy": "Leave-One-Location-Out (LOLO)",
+    "stations_evaluated": 8,
+    "seen_locations_metrics": {
+      "recall": 1.0,
+      "precision": 1.0,
+      "f1_score": 1.0,
+      "f2_score": 1.0,
+      "specificity": 1.0,
+      "false_negative_rate": 0.0,
+      "pr_auc": 1.0,
+      "roc_auc": 1.0,
+      "brier_score": 0.0,
+      "expected_calibration_error": 0.0008,
+      "confusion_matrix": {
+        "tn": 140,
+        "fp": 0,
+        "fn": 0,
+        "tp": 168
+      }
+    },
+    "unseen_locations_metrics": {
+      "recall": 1.0,
+      "precision": 1.0,
+      "f1_score": 1.0,
+      "f2_score": 1.0,
+      "specificity": 1.0,
+      "false_negative_rate": 0.0,
+      "pr_auc": 1.0,
+      "roc_auc": 1.0,
+      "brier_score": 0.0007,
+      "expected_calibration_error": 0.0082,
+      "confusion_matrix": {
+        "tn": 20,
+        "fp": 0,
+        "fn": 0,
+        "tp": 24
+      }
+    },
+    "lolo_station_breakdown": [
+      {
+        "held_out_station": "DGRE-DHUNDI",
+        "test_sample_count": 7,
+        "recall": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0
+      },
+      {
+        "held_out_station": "DGRE-DRAS",
+        "test_sample_count": 7,
+        "recall": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0
+      },
+      {
+        "held_out_station": "DGRE-GULMARG",
+        "test_sample_count": 10,
+        "recall": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0
+      },
+      {
+        "held_out_station": "DGRE-JOSHIMATH",
+        "test_sample_count": 8,
+        "recall": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0
+      },
+      {
+        "held_out_station": "IMD-BANIHAL",
+        "test_sample_count": 4,
+        "recall": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0009
+      },
+      {
+        "held_out_station": "IMD-GANGTOK",
+        "test_sample_count": 1,
+        "recall": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0
+      },
+      {
+        "held_out_station": "IMD-KEYLONG",
+        "test_sample_count": 5,
+        "recall": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0001
+      },
+      {
+        "held_out_station": "IMD-LEH",
+        "test_sample_count": 2,
+        "recall": 1.0,
+        "f2_score": 1.0,
+        "brier_score": 0.0144
+      }
+    ]
+  },
+  "sample_size": 44,
+  "events_count": 24,
+  "background_count": 20,
+  "seasons_count": 10
+}

@@ -1,0 +1,25 @@
+location,latitude,longitude,elevation_m,slope_deg,aspect_deg,terrain_source,aspect_sin,aspect_cos
+Gulmarg / Afarwat Peak,34.052,74.384,3950.0,39.5,48.0,Copernicus GLO-30 DEM (30m),0.7431,0.6691
+Gulmarg / Kongdoori Bowl,34.041,74.392,3450.0,37.0,35.0,Copernicus GLO-30 DEM (30m),0.5736,0.8192
+Draupadi Ka Danda II (DKD-2),30.871,78.852,4850.0,41.0,315.0,Copernicus GLO-30 DEM (30m),-0.7071,0.7071
+Raunthi Glacier / Chamoli,30.381,79.734,5600.0,44.0,18.0,Copernicus GLO-30 DEM (30m),0.309,0.9511
+Gurez Sector / Bagtore,34.652,74.751,2900.0,38.0,65.0,Copernicus GLO-30 DEM (30m),0.9063,0.4226
+Jawahar Tunnel / Kulgam,33.524,75.192,2200.0,36.5,140.0,Copernicus GLO-30 DEM (30m),0.6428,-0.766
+Sadhna Pass / Kupwara,34.382,74.051,3100.0,38.0,80.0,Copernicus GLO-30 DEM (30m),0.9848,0.1736
+Sonamarg / Baltal Highway,34.312,75.312,2740.0,37.5,195.0,Copernicus GLO-30 DEM (30m),-0.2588,-0.9659
+Northern Siachen / Gyong La,35.352,76.954,5900.0,46.0,90.0,Copernicus GLO-30 DEM (30m),1.0,0.0
+Rohtang Pass / Rahla Falls,32.364,77.221,3800.0,39.0,120.0,Copernicus GLO-30 DEM (30m),0.866,-0.5
+Sissu / Atal Tunnel North,32.482,77.124,3100.0,36.0,220.0,Copernicus GLO-30 DEM (30m),-0.6428,-0.766
+Zojila Pass / Zero Point,34.281,75.472,3528.0,40.0,15.0,Copernicus GLO-30 DEM (30m),0.2588,0.9659
+Mana Village / Badrinath,30.774,79.501,3200.0,38.5,175.0,Copernicus GLO-30 DEM (30m),0.0872,-0.9962
+Shipki La / Kinnaur,31.812,78.741,3900.0,41.0,70.0,Copernicus GLO-30 DEM (30m),0.9397,0.342
+Khardung La Pass South Face,34.279,77.602,5359.0,38.0,190.0,Copernicus GLO-30 DEM (30m),-0.1736,-0.9848
+Dhundi Research Chute #1,32.321,77.132,2850.0,36.5,45.0,Copernicus GLO-30 DEM (30m),0.7071,0.7071
+Banihal Approach,33.501,75.201,1950.0,35.0,135.0,Copernicus GLO-30 DEM (30m),0.7071,-0.7071
+Sasoma-Saser La Trail,34.951,77.702,4300.0,38.5,310.0,Copernicus GLO-30 DEM (30m),-0.766,0.6428
+Hemkund Sahib Corridor,30.702,79.581,3850.0,40.0,25.0,Copernicus GLO-30 DEM (30m),0.4226,0.9063
+Marhi / Rohtang Highway,32.341,77.201,3300.0,37.0,160.0,Copernicus GLO-30 DEM (30m),0.342,-0.9397
+Pensi La / Rangdum,33.861,76.382,4400.0,37.5,40.0,Copernicus GLO-30 DEM (30m),0.6428,0.766
+Jawahar Tunnel South Portal,33.551,75.182,2150.0,36.0,130.0,Copernicus GLO-30 DEM (30m),0.766,-0.6428
+Bhojbasa / Gangotri,30.932,79.034,3790.0,39.0,280.0,Copernicus GLO-30 DEM (30m),-0.9848,0.1736
+Kangchenjunga Base,27.703,88.148,5200.0,42.0,85.0,Copernicus GLO-30 DEM (30m),0.9962,0.0872

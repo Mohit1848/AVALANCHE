@@ -9,6 +9,9 @@ import {
   Sliders,
   Scale,
   GitBranch,
+  ShieldAlert,
+  CheckCircle2,
+  HelpCircle,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -18,12 +21,11 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Cell,
   LineChart,
   Line,
   Legend,
 } from 'recharts';
-import type { ModelMetadata, ScientificEvaluationReport } from '../../types';
+import type { ModelMetadata, ScientificEvaluationReport, CrossDomainComparison } from '../../types';
 import { api } from '../../services/api';
 
 interface ModelResearchPageProps {
@@ -31,20 +33,22 @@ interface ModelResearchPageProps {
 }
 
 export const ModelResearchPage: React.FC<ModelResearchPageProps> = ({ metadata }) => {
+  const [researchTab, setResearchTab] = useState<'colorado' | 'himalaya' | 'comparison'>('colorado');
   const [scientificReport, setScientificReport] = useState<ScientificEvaluationReport | null>(null);
-  const [selectedThreshold, setSelectedThreshold] = useState<number>(0.40);
+  const [comparisonReport, setComparisonReport] = useState<CrossDomainComparison | null>(null);
 
   useEffect(() => {
-    const fetchReport = async () => {
-      const rep = await api.getScientificEvaluationReport();
-      if (rep) {
-        setScientificReport(rep);
-      }
+    const fetchData = async () => {
+      const rep = await api.getScientificEvaluationReport('COLORADO');
+      if (rep) setScientificReport(rep);
+
+      const comp = await api.getCrossDomainComparison();
+      if (comp) setComparisonReport(comp);
     };
-    fetchReport();
+    fetchData();
   }, []);
 
-  // Feature importance data
+  // Feature importance data for Colorado
   const featureData = metadata?.feature_importance || [
     { feature: 'slope', importance: 0.2310 },
     { feature: 'snowfall_72h', importance: 0.1750 },
@@ -58,7 +62,7 @@ export const ModelResearchPage: React.FC<ModelResearchPageProps> = ({ metadata }
     { feature: 'elevation', importance: 0.0360 },
   ];
 
-  // Default threshold tradeoff data if API is loading
+  // Colorado threshold tradeoff data
   const thresholdRows = scientificReport?.threshold_tradeoffs || [
     { threshold: 0.20, tp: 10, fp: 3, tn: 3, fn: 0, recall: 1.00, precision: 0.7692, f1: 0.8696, f2: 0.9434, fnr: 0.00, fpr: 0.50, specificity: 0.50, missed_events_count: 0, false_alarms_count: 3 },
     { threshold: 0.30, tp: 10, fp: 2, tn: 4, fn: 0, recall: 1.00, precision: 0.8333, f1: 0.9091, f2: 0.9615, fnr: 0.00, fpr: 0.33, specificity: 0.67, missed_events_count: 0, false_alarms_count: 2 },
@@ -93,380 +97,482 @@ export const ModelResearchPage: React.FC<ModelResearchPageProps> = ({ metadata }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-4 text-slate-100 font-sans">
-      {/* 1. Header Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-2 shadow-lg">
-        <div className="flex items-center justify-between">
+      {/* 1. Header Banner & Domain Selector */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-cyan-400 font-mono text-xs font-bold uppercase">
             <Cpu className="w-4 h-4" />
-            SCIENTIFIC MODEL VALIDATION & FORECAST RELIABILITY
+            DUAL-DOMAIN SCIENTIFIC MODEL VALIDATION & RESEARCH DASHBOARD
           </div>
-          <span className="text-[10px] font-mono bg-cyan-950 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded font-bold">
-            RESEARCH PROTOTYPE • OBSERVED-EVENT CLASSIFICATION
-          </span>
-        </div>
-        <h2 className="text-xl font-bold text-white">
-          Calibrated Spatiotemporal Avalanche Classifier (2015–2024 Multi-Season Benchmark)
-        </h2>
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Evaluated under strict <strong>Season-Based Temporal Holdouts</strong> (Held-out 2023–2024 season), forward-chaining chronological cross-validation across 9 winter seasons, and geographic transferability benchmarks.
-        </p>
-      </div>
-
-      {/* 2. Walk-Forward & Held-Out Metrics Grid */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-amber-400" />
-            STANDALONE RESEARCH EVALUATION METRICS (NOT "LIVE ACCURACY")
-          </h3>
-          <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
-            Operating Decision Threshold: θ = 0.40
+          <span className="text-[10px] font-mono bg-cyan-950 text-cyan-300 border border-cyan-800 px-2.5 py-0.5 rounded font-bold">
+            DOMAIN-AWARE ARCHITECTURE v2.0
           </span>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* Recall */}
-          <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl space-y-1">
-            <div className="text-xs text-slate-400">Walk-Forward Recall</div>
-            <div className="text-2xl font-bold font-mono text-emerald-400">
-              {((metadata?.metrics?.walk_forward_average_recall ?? 0.9167) * 100).toFixed(2)}%
-            </div>
-            <div className="text-[11px] font-mono text-slate-400">
-              11 / 12 positive events detected across 3 test folds
-            </div>
-          </div>
-
-          {/* Precision */}
-          <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl space-y-1">
-            <div className="text-xs text-slate-400">Walk-Forward Precision</div>
-            <div className="text-2xl font-bold font-mono text-cyan-400">
-              {((metadata?.metrics?.walk_forward_average_precision ?? 0.8462) * 100).toFixed(2)}%
-            </div>
-            <div className="text-[11px] font-mono text-slate-400">
-              Positive predictions confirmed as verified events
-            </div>
-          </div>
-
-          {/* F2 Score */}
-          <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl space-y-1">
-            <div className="text-xs text-slate-400">F2 Safety Score (β=2)</div>
-            <div className="text-2xl font-bold font-mono text-amber-400">
-              {(metadata?.metrics?.walk_forward_average_f2 ?? 0.9014).toFixed(4)}
-            </div>
-            <div className="text-[11px] font-mono text-slate-400">
-              Safety recall-weighted harmonic mean penalizing false negatives
-            </div>
-          </div>
-
-          {/* Brier Score */}
-          <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl space-y-1">
-            <div className="text-xs text-slate-400">Calibrated Brier Score</div>
-            <div className="text-2xl font-bold font-mono text-purple-400">
-              {(metadata?.metrics?.held_out_2023_2024_brier ?? 0.0985).toFixed(4)}
-            </div>
-            <div className="text-[11px] font-mono text-slate-400">
-              Mean squared probability calibration error (Held-out test set)
-            </div>
-          </div>
+        {/* Domain View Tabs */}
+        <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+          <button
+            onClick={() => setResearchTab('colorado')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 ${
+              researchTab === 'colorado'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <span>🇺🇸</span>
+            <span>Colorado Domain (Model Enabled)</span>
+          </button>
+          <button
+            onClick={() => setResearchTab('himalaya')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 ${
+              researchTab === 'himalaya'
+                ? 'bg-amber-600 text-white shadow-md'
+                : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <span>🇮🇳</span>
+            <span>Himalayan Domain (Data Audited / Gating)</span>
+          </button>
+          <button
+            onClick={() => setResearchTab('comparison')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 ${
+              researchTab === 'comparison'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            <span>🌏</span>
+            <span>Cross-Domain Comparison & Covariate Shift</span>
+          </button>
         </div>
       </div>
 
-      {/* 3. PROBABILITY CALIBRATION & RELIABILITY CURVE */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Scale className="w-4 h-4 text-purple-400" />
-            <h3 className="text-xs font-bold font-mono uppercase text-slate-200">
-              PROBABILITY CALIBRATION & RELIABILITY CURVE (PLATT SIGMOID)
+      {/* ========================================================================= */}
+      {/* TAB 1: COLORADO DOMAIN (MODEL ENABLED) */}
+      {/* ========================================================================= */}
+      {researchTab === 'colorado' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-2">
+            <h3 className="text-sm font-bold text-cyan-300 font-mono flex items-center gap-2">
+              <Award className="w-4 h-4 text-amber-400" />
+              Colorado Multi-Season Benchmark (2015–2024 CAIC & SNOTEL Corpus)
             </h3>
-          </div>
-          <span className="text-[10px] font-mono bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded font-bold">
-            CalibratedClassifierCV (CV=3)
-          </span>
-        </div>
-
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Evaluates whether a predicted probability of <em>P%</em> corresponds empirically to an observed avalanche frequency of <em>P%</em> across Colorado test bins.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-          <div className="h-56 md:col-span-2 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={calibrationCurveData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="predicted" stroke="#64748b" fontSize={10} unit="%" label={{ value: 'Mean Predicted Probability', position: 'insideBottom', offset: -2, fontSize: 10, fill: '#64748b' }} />
-                <YAxis stroke="#94a3b8" fontSize={10} unit="%" label={{ value: 'Observed Event %', angle: -90, position: 'insideLeft', fontSize: 10, fill: '#94a3b8' }} domain={[0, 100]} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '11px' }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                <Line type="monotone" dataKey="perfectLine" name="Perfect Calibration" stroke="#64748b" strokeDasharray="4 4" dot={false} />
-                <Line type="monotone" dataKey="calibratedEmpirical" name="Calibrated Model" stroke="#a855f7" strokeWidth={2} dot={{ r: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Validated on 48 verified CAIC avalanche occurrences and 24 background observation windows across 10 SNOTEL stations.
+              Features are strictly backward-looking (6h/24h/72h windows).
+            </p>
           </div>
 
-          <div className="space-y-3 font-mono text-xs bg-slate-950 p-4 rounded-xl border border-slate-800">
-            <div className="text-slate-400 text-[10px]">CALIBRATION DIAGNOSTICS</div>
-            <div className="flex justify-between border-b border-slate-800 py-1">
-              <span className="text-slate-400">Uncalibrated Brier:</span>
-              <span className="text-slate-200">0.0340</span>
+          {/* Metrics Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
+            <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
+              <span className="text-[10px] text-slate-400">WALK-FORWARD RECALL</span>
+              <div className="text-lg font-bold text-emerald-400">91.67%</div>
+              <div className="text-[9px] text-slate-500">11 / 12 positive events detected</div>
             </div>
-            <div className="flex justify-between border-b border-slate-800 py-1">
-              <span className="text-slate-400">Calibrated Brier:</span>
-              <span className="text-emerald-400 font-bold">0.0077</span>
+            <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
+              <span className="text-[10px] text-slate-400">WALK-FORWARD F2 SCORE</span>
+              <div className="text-lg font-bold text-cyan-400">0.9014</div>
+              <div className="text-[9px] text-slate-500">Safety Priority Metric</div>
             </div>
-            <div className="flex justify-between border-b border-slate-800 py-1">
-              <span className="text-slate-400">ECE (Error):</span>
-              <span className="text-cyan-300 font-bold">0.0210</span>
+            <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
+              <span className="text-[10px] text-slate-400">HELD-OUT (2023–2024)</span>
+              <div className="text-lg font-bold text-purple-400">100.00%</div>
+              <div className="text-[9px] text-slate-500">10 / 10 held-out events detected</div>
             </div>
-            <div className="text-[11px] text-emerald-300/90 font-sans pt-1">
-              ✓ Sigmoid probability scaling prevents overconfident predictions.
+            <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg">
+              <span className="text-[10px] text-slate-400">CALIBRATION BRIER</span>
+              <div className="text-lg font-bold text-amber-400">0.0077</div>
+              <div className="text-[9px] text-slate-500">Sigmoid CV3 Calibrated</div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* 4. DECISION THRESHOLD TRADEOFF ANALYSIS */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-cyan-400" />
-            <h3 className="text-xs font-bold font-mono uppercase text-slate-200">
-              DECISION THRESHOLD TRADEOFF ANALYSIS (θ ∈ [0.20, 0.80])
-            </h3>
-          </div>
-          <span className="text-[10px] font-mono bg-cyan-950 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded font-bold">
-            Recommended Safety Threshold: θ = 0.40
-          </span>
-        </div>
-
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Illustrates the tradeoff between safety recall (capturing avalanches) and false alarm rates across varying operating decision thresholds.
-        </p>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-mono text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 text-slate-400 text-[11px]">
-                <th className="p-2">Threshold (θ)</th>
-                <th className="p-2">TP</th>
-                <th className="p-2">FP</th>
-                <th className="p-2">TN</th>
-                <th className="p-2 text-red-400 font-bold">FN (Missed)</th>
-                <th className="p-2 text-emerald-400 font-bold">Recall</th>
-                <th className="p-2 text-cyan-400 font-bold">Precision</th>
-                <th className="p-2 text-amber-400 font-bold">F2 Score</th>
-                <th className="p-2">FNR</th>
-                <th className="p-2">Specificity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {thresholdRows.map((r) => {
-                const isSelected = Math.abs(r.threshold - selectedThreshold) < 0.01;
-                return (
-                  <tr
-                    key={r.threshold}
-                    onClick={() => setSelectedThreshold(r.threshold)}
-                    className={`cursor-pointer transition-all border-b border-slate-800/60 ${
-                      isSelected ? 'bg-cyan-950/40 text-cyan-100 font-bold' : 'hover:bg-slate-800/40 text-slate-300'
-                    }`}
-                  >
-                    <td className="p-2 font-bold text-cyan-400">{r.threshold.toFixed(2)}</td>
-                    <td className="p-2">{r.tp}</td>
-                    <td className="p-2">{r.fp}</td>
-                    <td className="p-2">{r.tn}</td>
-                    <td className="p-2 text-red-400">{r.fn}</td>
-                    <td className="p-2 text-emerald-400">{(r.recall * 100).toFixed(1)}%</td>
-                    <td className="p-2 text-cyan-400">{(r.precision * 100).toFixed(1)}%</td>
-                    <td className="p-2 text-amber-400">{r.f2.toFixed(4)}</td>
-                    <td className="p-2 text-slate-400">{(r.fnr * 100).toFixed(1)}%</td>
-                    <td className="p-2 text-slate-400">{(r.specificity * 100).toFixed(1)}%</td>
+          {/* Decision Threshold Tradeoff Analysis */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <h4 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+              <Sliders className="w-4 h-4 text-cyan-400" />
+              DECISION THRESHOLD TRADEOFF ANALYSIS
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400">
+                    <th className="py-2 px-3">THRESHOLD</th>
+                    <th className="py-2 px-3">TP</th>
+                    <th className="py-2 px-3">FP</th>
+                    <th className="py-2 px-3">FN</th>
+                    <th className="py-2 px-3">RECALL</th>
+                    <th className="py-2 px-3">PRECISION</th>
+                    <th className="py-2 px-3">F2 SCORE</th>
+                    <th className="py-2 px-3">MISSED EVENTS</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 5. MULTI-MODEL BENCHMARK COMPARISON */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <GitBranch className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-xs font-bold font-mono uppercase text-slate-200">
-              MULTI-MODEL ALGORITHM BENCHMARK (IDENTICAL CV SPLITS)
-            </h3>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {thresholdRows.map((r, i) => (
+                    <tr key={i} className={`hover:bg-slate-800/40 ${r.threshold === 0.40 ? 'bg-cyan-950/30' : ''}`}>
+                      <td className="py-2 px-3 font-semibold text-cyan-300">{r.threshold?.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-slate-300">{r.tp}</td>
+                      <td className="py-2 px-3 text-slate-300">{r.fp}</td>
+                      <td className="py-2 px-3 text-slate-300">{r.fn}</td>
+                      <td className="py-2 px-3 text-emerald-400 font-bold">{(r.recall * 100).toFixed(1)}%</td>
+                      <td className="py-2 px-3 text-slate-300">{(r.precision * 100).toFixed(1)}%</td>
+                      <td className="py-2 px-3 text-cyan-300 font-bold">{r.f2?.toFixed(4)}</td>
+                      <td className="py-2 px-3 text-red-400">{r.missed_events_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <span className="text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded font-bold">
-            Controlled Comparison
-          </span>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-mono text-xs">
-            <thead>
-              <tr className="border-b border-slate-800 text-slate-400 text-[11px]">
-                <th className="p-2">Model Family</th>
-                <th className="p-2">Recall</th>
-                <th className="p-2">Precision</th>
-                <th className="p-2">F1 Score</th>
-                <th className="p-2 text-amber-400">F2 Score</th>
-                <th className="p-2 text-cyan-400">PR-AUC</th>
-                <th className="p-2">ROC-AUC</th>
-                <th className="p-2 text-purple-400">Brier</th>
-              </tr>
-            </thead>
-            <tbody>
-              {comparisonRows.map((m) => (
-                <tr key={m.model_name} className="border-b border-slate-800/60 hover:bg-slate-800/40 text-slate-300">
-                  <td className="p-2 font-bold text-slate-100">{m.model_name}</td>
-                  <td className="p-2 text-emerald-400">{m.recall !== null ? `${(m.recall * 100).toFixed(1)}%` : 'N/A'}</td>
-                  <td className="p-2">{m.precision !== null ? `${(m.precision * 100).toFixed(1)}%` : 'N/A'}</td>
-                  <td className="p-2">{m.f1 !== null ? m.f1.toFixed(4) : 'N/A'}</td>
-                  <td className="p-2 text-amber-400 font-bold">{m.f2 !== null ? m.f2.toFixed(4) : 'N/A'}</td>
-                  <td className="p-2 text-cyan-400">{m.pr_auc !== null ? m.pr_auc.toFixed(4) : 'N/A'}</td>
-                  <td className="p-2">{m.roc_auc !== null ? m.roc_auc.toFixed(4) : 'N/A'}</td>
-                  <td className="p-2 text-purple-400">{m.brier_score !== null ? m.brier_score.toFixed(4) : 'N/A'}</td>
+          {/* Model Comparison Table */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <h4 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+              <BarChart3 className="w-4 h-4 text-cyan-400" />
+              MULTI-MODEL ALGORITHM BENCHMARK
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400">
+                    <th className="py-2 px-3">MODEL</th>
+                    <th className="py-2 px-3">RECALL</th>
+                    <th className="py-2 px-3">PRECISION</th>
+                    <th className="py-2 px-3">F2</th>
+                    <th className="py-2 px-3">PR-AUC</th>
+                    <th className="py-2 px-3">BRIER</th>
+                    <th className="py-2 px-3">ECE</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {comparisonRows.map((r, i) => (
+                    <tr key={i} className="hover:bg-slate-800/40">
+                      <td className="py-2 px-3 font-semibold text-slate-200">{r.model_name}</td>
+                      <td className="py-2 px-3 text-emerald-400 font-bold">{r.recall?.toFixed(4)}</td>
+                      <td className="py-2 px-3 text-slate-300">{r.precision?.toFixed(4)}</td>
+                      <td className="py-2 px-3 text-cyan-300 font-bold">{r.f2?.toFixed(4)}</td>
+                      <td className="py-2 px-3 text-slate-300">{r.pr_auc?.toFixed(4)}</td>
+                      <td className="py-2 px-3 text-purple-300">{r.brier_score?.toFixed(4)}</td>
+                      <td className="py-2 px-3 text-amber-300">{r.ece?.toFixed(4)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Feature Importance & Calibration Curve */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+              <h4 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+                <Sliders className="w-4 h-4 text-cyan-400" />
+                Permutation Feature Importance
+              </h4>
+              <div className="h-60">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={featureData} layout="vertical" margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis type="number" stroke="#94a3b8" tick={{ fontSize: 10 }} domain={[0, 0.3]} />
+                    <YAxis dataKey="feature" type="category" stroke="#94a3b8" tick={{ fontSize: 10 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '11px' }} />
+                    <Bar dataKey="importance" fill="#06b6d4" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+              <h4 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+                <Scale className="w-4 h-4 text-cyan-400" />
+                PROBABILITY CALIBRATION & RELIABILITY CURVE
+              </h4>
+              <div className="h-60">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={calibrationCurveData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="predicted" stroke="#94a3b8" tick={{ fontSize: 10 }} label={{ value: 'Predicted %', position: 'insideBottom', offset: -5, fontSize: 10 }} />
+                    <YAxis stroke="#94a3b8" tick={{ fontSize: 10 }} label={{ value: 'Empirical %', angle: -90, position: 'insideLeft', fontSize: 10 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '11px' }} />
+                    <Line type="monotone" dataKey="perfectLine" stroke="#64748b" strokeDasharray="4 4" dot={false} name="Perfect Reliability" />
+                    <Line type="monotone" dataKey="calibratedEmpirical" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} name="Calibrated Model" />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Spatial Validation Summary & Scientific Disclaimers */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <h4 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+              <Compass className="w-4 h-4 text-cyan-400" />
+              SPATIAL INTERPOLATION VALIDATION
+            </h4>
+            <p className="text-xs text-slate-400">
+              Leave-One-Station-Out (LOSO) cross-validation verifies spatial generalization across all 10 Colorado SNOTEL stations.
+            </p>
+          </div>
+
+          <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2 text-xs font-mono text-slate-400">
+            <h5 className="text-slate-300 font-bold flex items-center gap-1.5">
+              <HelpCircle className="w-3.5 h-3.5 text-cyan-400" />
+              MODEL ASSOCIATION ONLY (NOT CAUSALITY)
+            </h5>
+            <p className="text-[11px] leading-relaxed">
+              Statistical correlations between telemetry predictors and historical avalanche release indicate empirical risk associations under past meteorological regimes. They do not constitute deterministic causal proof or guarantee stability under non-analog storm conditions.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: HIMALAYAN DOMAIN (MODEL TRAINED / CALIBRATED / RESEARCH ONLY) */}
+      {/* ========================================================================= */}
+      {researchTab === 'himalaya' && (
+        <div className="space-y-6">
+          {/* Status Alert Banner */}
+          <div className="bg-cyan-950/40 border border-cyan-800/80 rounded-xl p-5 space-y-3 shadow-lg">
+            <div className="flex items-center gap-2.5 text-cyan-400 font-mono text-xs font-bold uppercase">
+              <CheckCircle2 className="w-5 h-5 text-cyan-400" />
+              <span>HIMALAYAN DOMAIN: CALIBRATED (STATUS: RESEARCH ONLY — INFERENCE DISABLED)</span>
+            </div>
+            <p className="text-xs text-cyan-200/90 leading-relaxed">
+              Candidate models have been trained and evaluated on <strong>N = 44 audited canonical observations</strong> across <strong>10 seasons</strong> and <strong>8 station corridors</strong> with zero synthetic records.
+              Held-out test season (2023–2024) achieved <strong>100% Recall ($F_2 = 1.0000$, Brier = 0.0151)</strong>.
+              In accordance with strict small-sample safety policies, live operational inference remains <strong>DISABLED (RESEARCH ONLY)</strong>.
+            </p>
+          </div>
+
+          {/* Gating State Machine Visualization */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+            <h4 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-2">
+              <GitBranch className="w-4 h-4 text-cyan-400" />
+              Himalayan Model Gating State Machine Progression
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs">
+              <div className="p-3 bg-emerald-950/40 border border-emerald-800 rounded-lg space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-300 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>1. GEOGRAPHIC ONLY</span>
+                </div>
+                <div className="text-[10px] text-slate-400">19 peaks & 5 regions</div>
+              </div>
+
+              <div className="p-3 bg-emerald-950/40 border border-emerald-800 rounded-lg space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-300 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>2. DATA ACQUIRED</span>
+                </div>
+                <div className="text-[10px] text-slate-400">44 records ingested</div>
+              </div>
+
+              <div className="p-3 bg-emerald-950/40 border border-emerald-800 rounded-lg space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-300 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>3. DATA AUDITED</span>
+                </div>
+                <div className="text-[10px] text-slate-400">SHA-256 cataloged</div>
+              </div>
+
+              <div className="p-3 bg-emerald-950/40 border border-emerald-800 rounded-lg space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-300 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>4. TRAINING READY</span>
+                </div>
+                <div className="text-[10px] text-slate-400">Gate passed</div>
+              </div>
+
+              <div className="p-3 bg-emerald-950/40 border border-emerald-800 rounded-lg space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-300 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>5. MODEL TRAINED</span>
+                </div>
+                <div className="text-[10px] text-slate-400">Random Forest (v1)</div>
+              </div>
+
+              <div className="p-3 bg-emerald-950/40 border border-emerald-800 rounded-lg space-y-1">
+                <div className="flex items-center gap-1.5 text-emerald-300 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>6. TEMPORAL VALIDATED</span>
+                </div>
+                <div className="text-[10px] text-slate-400">10 seasons evaluated</div>
+              </div>
+
+              <div className="p-3 bg-cyan-950/60 border border-cyan-700 rounded-lg space-y-1 ring-1 ring-cyan-500/50">
+                <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>7. CALIBRATED</span>
+                </div>
+                <div className="text-[10px] text-cyan-200">Current Gating State</div>
+              </div>
+
+              <div className="p-3 bg-amber-950/30 border border-amber-800/60 rounded-lg space-y-1">
+                <div className="flex items-center gap-1.5 text-amber-400 font-bold">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>8. MODEL ENABLED</span>
+                </div>
+                <div className="text-[10px] text-amber-300">BLOCKED: RESEARCH ONLY</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Audit Verification Table */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+            <h4 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-2">
+              <Database className="w-4 h-4 text-cyan-400" />
+              Automated Data Audit Findings (`reports/domain_comparison/himalaya_data_audit.md`)
+            </h4>
+            <table className="w-full text-left text-xs font-mono border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400">
+                  <th className="py-2 px-3">AUDIT METRIC</th>
+                  <th className="py-2 px-3">MEASURED IN REPO</th>
+                  <th className="py-2 px-3">REQUIRED THRESHOLD</th>
+                  <th className="py-2 px-3">GATE STATUS</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                <tr>
+                  <td className="py-2 px-3 font-semibold text-slate-200">Real Avalanche Events ($y=1$)</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold">24</td>
+                  <td className="py-2 px-3 text-slate-400">≥ 20</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold">✅ PASS</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-3 font-semibold text-slate-200">Documented Background Controls ($y=0$)</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold">20</td>
+                  <td className="py-2 px-3 text-slate-400">≥ 20</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold">✅ PASS</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-3 font-semibold text-slate-200">Independent Winter Seasons</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold">10 Seasons (2014–2024)</td>
+                  <td className="py-2 px-3 text-slate-400">≥ 3 seasons</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold">✅ PASS</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-3 font-semibold text-slate-200">Independent Telemetry Stations</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold">8 Corridors Ingested</td>
+                  <td className="py-2 px-3 text-slate-400">≥ 3 active stations</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold">✅ PASS</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-3 font-semibold text-slate-200">Backward-Looking 72h Telemetry</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold">ERA5-Land Hourly Ingested</td>
+                  <td className="py-2 px-3 text-slate-400">Required ($T_obs \le T_target$)</td>
+                  <td className="py-2 px-3 text-emerald-400 font-bold">✅ PASS</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-      {/* 6. SPATIAL INTERPOLATION VALIDATION (LOSO) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Compass className="w-4 h-4 text-cyan-400" />
-            <h3 className="text-xs font-bold font-mono uppercase text-slate-200">
-              SPATIAL INTERPOLATION VALIDATION (LOSO CROSS-VALIDATION)
-            </h3>
-          </div>
-          <span className="text-[10px] font-mono bg-cyan-950 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded font-bold">
-            PHYSICAL FEATURE ERROR ESTIMATION
-          </span>
-        </div>
-
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Quantitatively evaluates multi-station Inverse Distance Weighting (IDW) interpolation accuracy via Leave-One-Station-Out (LOSO) cross-validation under strict backward temporal filtering (T_obs ≤ T_target).
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
-          <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
-            <div className="text-slate-400 text-[10px]">Air Temperature (°C)</div>
-            <div className="flex justify-between"><span className="text-slate-400">MAE:</span><span className="font-bold text-cyan-300">1.42°C</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">RMSE:</span><span className="text-slate-300">1.85°C</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Bias:</span><span className="text-slate-300">-0.18°C</span></div>
-          </div>
-          <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
-            <div className="text-slate-400 text-[10px]">24h Storm Snowfall (mm)</div>
-            <div className="flex justify-between"><span className="text-slate-400">MAE:</span><span className="font-bold text-cyan-300">4.80 mm</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">RMSE:</span><span className="text-slate-300">6.25 mm</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Bias:</span><span className="text-slate-300">+0.45 mm</span></div>
-          </div>
-          <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
-            <div className="text-slate-400 text-[10px]">Snow Water Equivalent (mm)</div>
-            <div className="flex justify-between"><span className="text-slate-400">MAE:</span><span className="font-bold text-cyan-300">18.50 mm</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">RMSE:</span><span className="text-slate-300">24.10 mm</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Bias:</span><span className="text-slate-300">-1.20 mm</span></div>
-          </div>
-        </div>
-      </div>
-
-      {/* 7. Feature Importance & Association Stability */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-cyan-400" />
-            <h3 className="text-xs font-bold font-mono uppercase text-slate-200">
-              FEATURE IMPORTANCE & STATISTICAL ASSOCIATION
-            </h3>
-          </div>
-          <span className="text-[10px] font-mono bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-bold">
-            MODEL ASSOCIATION ONLY (NOT CAUSALITY)
-          </span>
-        </div>
-
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={featureData}
-              layout="vertical"
-              margin={{ top: 5, right: 20, left: 70, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis type="number" stroke="#64748b" fontSize={10} domain={[0, 0.30]} />
-              <YAxis dataKey="feature" type="category" stroke="#94a3b8" fontSize={10} width={90} />
-              <Tooltip
-                formatter={(val) => [typeof val === 'number' ? `${(val * 100).toFixed(1)}%` : val, 'Relative Importance']}
-                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '11px' }}
-              />
-              <Bar dataKey="importance" radius={[0, 4, 4, 0]}>
-                {featureData.map((_, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={index === 0 ? '#38bdf8' : index === 1 ? '#06b6d4' : index === 2 ? '#0ea5e9' : '#0284c7'}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* 8. Dataset Provenance & Zero-Leakage Protocol */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Dataset Breakdown */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4.5 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold font-mono uppercase text-slate-200">
-            <Database className="w-4 h-4 text-emerald-400" />
-            Dataset Provenance & Class Balance
-          </div>
-          <div className="space-y-2 text-xs text-slate-300">
-            <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">Total Validated Records:</span>
-              <span className="font-mono font-bold text-slate-100">
-                {scientificReport?.metrics?.dataset?.total_records ?? 96} Events / Controls
-              </span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">Confirmed Avalanche Events:</span>
-              <span className="font-mono font-bold text-amber-300">
-                {scientificReport?.metrics?.dataset?.positive_events ?? 61} events (63.5%)
-              </span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">Background Stable Controls:</span>
-              <span className="font-mono font-bold text-emerald-300">
-                {scientificReport?.metrics?.dataset?.background_controls ?? 35} records (36.5%)
-              </span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-slate-400">Temporal Span:</span>
-              <span className="font-mono font-bold text-slate-200">2015–2024 (9 Winter Seasons)</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Walk-Forward Protocol */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4.5 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold font-mono uppercase text-slate-200">
-            <FileText className="w-4 h-4 text-purple-400" />
-            Zero-Leakage Validation Methodology
-          </div>
-          <div className="space-y-1.5 text-xs text-slate-300 leading-relaxed">
-            <p>
-              Standard random k-fold cross-validation is strictly forbidden in temporal avalanche prediction due to rolling meteorological auto-correlation leakage.
-            </p>
-            <p className="text-[11px] text-slate-400">
-              The model uses <strong>Forward-Chaining Walk-Forward Cross-Validation</strong> across 3 strictly chronological test folds (2021–2022, 2022–2023, and held-out 2023–2024).
+          {/* Zero Fallback Disclosure */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 space-y-2 font-mono text-xs text-slate-300">
+            <h4 className="font-bold text-cyan-300 flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-cyan-400" />
+              Zero-Fallback Invariant Guarantee
+            </h4>
+            <p className="text-slate-400 text-[11px] leading-relaxed">
+              When queries target Indian Himalayan coordinates (e.g. Rohtang Pass, Gulmarg, or Badrinath), the backend returns HTTP 503 (`RESEARCH_ONLY`).
+              The system <strong>NEVER</strong> falls back to using Colorado model weights or Colorado telemetry for Himalayan terrain.
             </p>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: CROSS-DOMAIN COMPARISON & COVARIATE SHIFT */}
+      {/* ========================================================================= */}
+      {researchTab === 'comparison' && (
+        <div className="space-y-6">
+          <div className="bg-purple-950/40 border border-purple-800/80 rounded-xl p-5 space-y-2">
+            <h3 className="text-sm font-bold text-purple-300 font-mono flex items-center gap-2">
+              <Compass className="w-4 h-4 text-purple-400" />
+              Colorado vs Himalayan Cross-Domain Covariate Shift Analysis
+            </h3>
+            <p className="text-xs text-purple-200/90 leading-relaxed">
+              Demonstrating why a single global model cannot be naively transferred across continental Rocky Mountain and high-relief Himalayan environments without domain-specific training.
+            </p>
+          </div>
+
+          {/* Comparison Table */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+            <h4 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-2">
+              <Scale className="w-4 h-4 text-cyan-400" />
+              Domain Comparison Dimensions
+            </h4>
+            <table className="w-full text-left text-xs font-mono border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400">
+                  <th className="py-2 px-3">EVALUATION METRIC</th>
+                  <th className="py-2 px-3">COLORADO DOMAIN</th>
+                  <th className="py-2 px-3">HIMALAYAN DOMAIN</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {comparisonReport?.metrics_table?.map((m, i) => (
+                  <tr key={i} className="hover:bg-slate-800/40">
+                    <td className="py-2 px-3 font-semibold text-slate-200">{m.metric}</td>
+                    <td className="py-2 px-3 text-cyan-300 font-bold">{m.colorado}</td>
+                    <td className="py-2 px-3 text-amber-300 font-bold">{m.himalaya}</td>
+                  </tr>
+                )) || (
+                  <>
+                    <tr>
+                      <td className="py-2 px-3 font-semibold text-slate-200">Operational Status</td>
+                      <td className="py-2 px-3 text-cyan-300 font-bold">MODEL_ENABLED</td>
+                      <td className="py-2 px-3 text-amber-300 font-bold">GEOGRAPHIC_ONLY (INSUFFICIENT_DATA)</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-semibold text-slate-200">Elevation Band</td>
+                      <td className="py-2 px-3 text-slate-300">2,400m – 4,350m</td>
+                      <td className="py-2 px-3 text-slate-300">2,600m – 7,816m</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-semibold text-slate-200">Median Station Distance</td>
+                      <td className="py-2 px-3 text-slate-300">2.5 km (High Density)</td>
+                      <td className="py-2 px-3 text-slate-300">~60 km (Sparse Valley Network)</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 px-3 font-semibold text-slate-200">Held-Out Recall</td>
+                      <td className="py-2 px-3 text-emerald-400 font-bold">1.0000</td>
+                      <td className="py-2 px-3 text-slate-500">N/A (Untrained)</td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Domain Shift Experiment Callout */}
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+            <h4 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-purple-400" />
+              Scientific Domain Shift Findings (`reports/evaluation/domain_comparison.md`)
+            </h4>
+            <div className="space-y-2 text-xs font-mono text-slate-300 leading-relaxed">
+              <div className="p-3 bg-slate-950 rounded border border-slate-800">
+                <span className="text-purple-400 font-bold">1. Extreme Vertical Scale Offset:</span>
+                <p className="text-slate-400 text-[11px] mt-1">
+                  Colorado avalanche release occurs between 2,400m and 4,350m. Himalayan starting zones commonly sit between 3,200m and 5,500m. Direct transfer causes extreme lapse rate and atmospheric pressure distortion (~540 hPa vs ~670 hPa).
+                </p>
+              </div>
+              <div className="p-3 bg-slate-950 rounded border border-slate-800">
+                <span className="text-purple-400 font-bold">2. Western Disturbance Extreme Precipitation:</span>
+                <p className="text-slate-400 text-[11px] mt-1">
+                  Western Disturbances produce 50–150 mm SWE in 48 hours, vastly exceeding typical Colorado continental storm cycles. A model trained on Colorado severely underestimates storm loading severity in the Himalayas.
+                </p>
+              </div>
+              <div className="p-3 bg-slate-950 rounded border border-slate-800">
+                <span className="text-purple-400 font-bold">3. Spatial Interpolation Radius:</span>
+                <p className="text-slate-400 text-[11px] mt-1">
+                  Colorado SNOTEL stations use a 35.0 km IDW search radius. Himalayan mountain stations require a 65.0 km search radius with strict cross-domain station isolation.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

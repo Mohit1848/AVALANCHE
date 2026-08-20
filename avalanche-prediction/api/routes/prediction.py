@@ -6,6 +6,7 @@ from api.dependencies import get_inference_engine
 from api.schemas import PointPredictionRequest, StationTelemetryBatchRequest, RiskPredictionResponse, ErrorResponse
 from api.services.feature_service import enrich_point_features, process_telemetry_batch
 from api.services.inference_service import AvalancheInferenceEngine
+from ml.model_registry import ModelUnavailableError, DomainMismatchError
 from services.ingestion.storage import storage_manager
 
 router = APIRouter(tags=["Prediction & History"])
@@ -15,8 +16,9 @@ router = APIRouter(tags=["Prediction & History"])
     "/predict/point",
     response_model=RiskPredictionResponse,
     responses={
+        422: {"model": ErrorResponse, "description": "Domain boundary coordinate mismatch or validation error"},
         500: {"model": ErrorResponse, "description": "Internal prediction failure"},
-        503: {"model": ErrorResponse, "description": "Inference engine unavailable"}
+        503: {"model": ErrorResponse, "description": "Inference engine unavailable or domain model not ready"}
     }
 )
 def predict_point_risk(
@@ -32,11 +34,29 @@ def predict_point_risk(
 
     try:
         feature_dict = enrich_point_features(request)
-        return engine.predict_risk(feature_dict)
+        feature_dict["latitude"] = request.latitude
+        feature_dict["longitude"] = request.longitude
+        domain = request.domain or "COLORADO"
+        return engine.predict_risk(feature_dict, domain=domain)
+    except ModelUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc)
+        )
+    except DomainMismatchError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc)
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc)
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while evaluating point avalanche risk."
+            detail=f"An error occurred while evaluating point avalanche risk: {str(exc)}"
         )
 
 
@@ -45,8 +65,9 @@ def predict_point_risk(
     response_model=RiskPredictionResponse,
     responses={
         400: {"model": ErrorResponse, "description": "Invalid telemetry time-series"},
+        422: {"model": ErrorResponse, "description": "Domain boundary mismatch"},
         500: {"model": ErrorResponse, "description": "Internal stream processing failure"},
-        503: {"model": ErrorResponse, "description": "Inference engine unavailable"}
+        503: {"model": ErrorResponse, "description": "Inference engine unavailable or domain model not ready"}
     }
 )
 def predict_from_telemetry_stream(
@@ -68,11 +89,29 @@ def predict_from_telemetry_stream(
 
     try:
         feature_dict, quality_warnings = process_telemetry_batch(request)
-        return engine.predict_risk(feature_dict, external_warnings=quality_warnings)
+        feature_dict["latitude"] = request.latitude
+        feature_dict["longitude"] = request.longitude
+        domain = request.domain or "COLORADO"
+        return engine.predict_risk(feature_dict, domain=domain, external_warnings=quality_warnings)
+    except ModelUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc)
+        )
+    except DomainMismatchError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc)
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc)
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while processing time-series telemetry."
+            detail=f"An error occurred while processing time-series telemetry: {str(exc)}"
         )
 
 

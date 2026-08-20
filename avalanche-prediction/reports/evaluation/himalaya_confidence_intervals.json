@@ -1,0 +1,180 @@
+{
+  "dataset_sample_size": 44,
+  "held_out_test_season_2023_2024": {
+    "subset_name": "Held-Out Test Season (2023-2024)",
+    "sample_size_N": 6,
+    "events_k": 4,
+    "backgrounds_k": 2,
+    "confidence_level": "95%",
+    "metrics_with_intervals": {
+      "recall": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 0.5101,
+        "upper_95_ci": 1.0,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 4
+      },
+      "precision": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 0.5101,
+        "upper_95_ci": 1.0,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 4
+      },
+      "f2_score": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 1.0,
+        "upper_95_ci": 1.0,
+        "method": "Bootstrap Percentile (1000 resamples)",
+        "sample_size_evaluated": 6
+      },
+      "specificity": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 0.3424,
+        "upper_95_ci": 1.0,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 2
+      },
+      "false_negative_rate": {
+        "point_estimate": 0.0,
+        "lower_95_ci": 0.0,
+        "upper_95_ci": 0.4899,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 4
+      },
+      "pr_auc": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 1.0,
+        "upper_95_ci": 1.0,
+        "method": "Bootstrap Percentile (1000 resamples)",
+        "sample_size_evaluated": 6
+      },
+      "brier_score": {
+        "point_estimate": 0.0151,
+        "lower_95_ci": 0.0134,
+        "upper_95_ci": 0.0168,
+        "method": "Bootstrap Percentile (1000 resamples)",
+        "sample_size_evaluated": 6
+      }
+    },
+    "statistical_summary": "With N=6, 95% confidence intervals span a substantial margin (e.g. Recall [0.5101, 1.0]). High point estimates must be interpreted with caution."
+  },
+  "validation_season_2022_2023": {
+    "subset_name": "Validation Season (2022-2023)",
+    "sample_size_N": 5,
+    "events_k": 3,
+    "backgrounds_k": 2,
+    "confidence_level": "95%",
+    "metrics_with_intervals": {
+      "recall": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 0.4385,
+        "upper_95_ci": 1.0,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 3
+      },
+      "precision": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 0.4385,
+        "upper_95_ci": 1.0,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 3
+      },
+      "f2_score": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 1.0,
+        "upper_95_ci": 1.0,
+        "method": "Bootstrap Percentile (1000 resamples)",
+        "sample_size_evaluated": 5
+      },
+      "specificity": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 0.3424,
+        "upper_95_ci": 1.0,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 2
+      },
+      "false_negative_rate": {
+        "point_estimate": 0.0,
+        "lower_95_ci": 0.0,
+        "upper_95_ci": 0.5615,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 3
+      },
+      "pr_auc": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 1.0,
+        "upper_95_ci": 1.0,
+        "method": "Bootstrap Percentile (1000 resamples)",
+        "sample_size_evaluated": 5
+      },
+      "brier_score": {
+        "point_estimate": 0.0145,
+        "lower_95_ci": 0.013,
+        "upper_95_ci": 0.016,
+        "method": "Bootstrap Percentile (1000 resamples)",
+        "sample_size_evaluated": 5
+      }
+    },
+    "statistical_summary": "With N=5, 95% confidence intervals span a substantial margin (e.g. Recall [0.4385, 1.0]). High point estimates must be interpreted with caution."
+  },
+  "full_canonical_dataset_n44": {
+    "subset_name": "Full Audited Dataset (N=44)",
+    "sample_size_N": 44,
+    "events_k": 24,
+    "backgrounds_k": 20,
+    "confidence_level": "95%",
+    "metrics_with_intervals": {
+      "recall": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 0.862,
+        "upper_95_ci": 1.0,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 24
+      },
+      "precision": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 0.862,
+        "upper_95_ci": 1.0,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 24
+      },
+      "f2_score": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 1.0,
+        "upper_95_ci": 1.0,
+        "method": "Bootstrap Percentile (1000 resamples)",
+        "sample_size_evaluated": 44
+      },
+      "specificity": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 0.8389,
+        "upper_95_ci": 1.0,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 20
+      },
+      "false_negative_rate": {
+        "point_estimate": 0.0,
+        "lower_95_ci": 0.0,
+        "upper_95_ci": 0.138,
+        "method": "Wilson Score Interval",
+        "sample_size_evaluated": 24
+      },
+      "pr_auc": {
+        "point_estimate": 1.0,
+        "lower_95_ci": 1.0,
+        "upper_95_ci": 1.0,
+        "method": "Bootstrap Percentile (1000 resamples)",
+        "sample_size_evaluated": 44
+      },
+      "brier_score": {
+        "point_estimate": 0.0144,
+        "lower_95_ci": 0.0138,
+        "upper_95_ci": 0.0149,
+        "method": "Bootstrap Percentile (1000 resamples)",
+        "sample_size_evaluated": 44
+      }
+    },
+    "statistical_summary": "With N=44, 95% confidence intervals span a substantial margin (e.g. Recall [0.862, 1.0]). High point estimates must be interpreted with caution."
+  }
+}

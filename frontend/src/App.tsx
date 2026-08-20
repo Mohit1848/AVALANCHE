@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Header } from './components/common/Header';
 import { DisclaimerBanner } from './components/common/DisclaimerBanner';
 import { ColoradoMap } from './components/map/ColoradoMap';
@@ -30,9 +30,9 @@ import type {
   IndianPeak,
   IndianRegion,
   GeographicDomain,
+  PredictionContext,
 } from './types';
 import { Layers, AlertCircle, Search, Mountain, ShieldAlert } from 'lucide-react';
-
 
 export function App() {
   const [activeTab, setActiveTab] = useState<'console' | 'spatial' | 'history' | 'playback' | 'research'>('console');
@@ -74,31 +74,50 @@ export function App() {
   const [selectedSeason, setSelectedSeason] = useState<string>('ALL');
   const [selectedTrigger, setSelectedTrigger] = useState<string>('ALL');
 
-  // Selected Location / Query State
-  const [selectedLocation, setSelectedLocation] = useState<SelectedLocationState>({
-    type: 'ZONE',
-    name: 'Front Range (Berthoud / Loveland Pass Corridor)',
-    latitude: 39.75,
-    longitude: -105.80,
-    elevation: 3550.0,
-    slope: 38.0,
+  // Single Source of Truth Prediction Context
+  const [predictionContext, setPredictionContext] = useState<PredictionContext>({
+    target_id: '335',
+    target_name: 'SNOTEL 335: Berthoud Summit',
+    target_type: 'STATION',
+    latitude: 39.798,
+    longitude: -105.778,
+    elevation: 3444,
+    slope: 36.0,
     aspect: 45.0,
-    temperature: -6.5,
-    snow_depth: 140.0,
-    snow_water_equivalent: 225.0,
-    snowfall_6h: 8.0,
-    snowfall_24h: 24.0,
-    snowfall_72h: 38.0,
-    temperature_delta_24h: -3.0,
-    wind_speed_mean_24h: 24.0,
-    wind_speed_max_24h: 48.0,
-    telemetry_age_minutes: 38,
+    temperature: null,
+    humidity: null,
+    pressure: null,
+    precipitation: null,
+    wind_speed_mean_24h: null,
+    wind_speed_max_24h: null,
+    snow_depth: null,
+    snow_water_equivalent: null,
+    snowfall_6h: null,
+    snowfall_24h: null,
+    snowfall_72h: null,
+    temperature_delta_24h: null,
+    temperature_delta_72h: null,
+    telemetry_timestamp: null,
+    telemetry_age_minutes: null,
+    data_quality: 'GOOD',
+    freshness_state: 'GOOD',
+    assessment_status: 'CURRENT',
+    prediction_available: true,
+    suppression_reason: null,
+    current_utc: new Date().toISOString(),
+    last_observation_timestamp: null,
+    telemetry_status: 'GOOD',
+    telemetry_source: 'SNOTEL Automated Telemetry (AWDB)',
+    terrain_source: 'Copernicus GLO-30 DEM (30m)',
+    prediction: null,
+    rules_evaluation: [],
+    isLoading: true,
+    error: null,
   });
 
-  // Active ML Prediction State
-  const [prediction, setPrediction] = useState<RiskPredictionResponse | null>(null);
-  const [isLoadingPrediction, setIsLoadingPrediction] = useState<boolean>(false);
-  const [apiError, setApiError] = useState<string | null>(null);
+  // Request sequence and abort controller for race-condition safety
+  const activeRequestIdRef = useRef<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const toggleLayer = (layerKey: keyof LayerVisibilityState) => {
     setLayerVisibility((prev) => ({ ...prev, [layerKey]: !prev[layerKey] }));
@@ -128,10 +147,9 @@ export function App() {
         setIndianRegions(regionsRes.regions);
 
         if (peaksRes.peaks.length > 0) {
-          setSelectedIndianPeak(peaksRes.peaks[0]); // Default to Nanda Devi
+          setSelectedIndianPeak(peaksRes.peaks[0]);
         }
 
-        // Fallback default zones and stations for Map rendering
         setZones([
           { zone_id: 'CO_FRONT_RANGE', name: 'Front Range', center_latitude: 39.750, center_longitude: -105.800, elevation_range_m: '2,400m – 4,350m', primary_snotel_stations: ['335', '586'] },
           { zone_id: 'CO_VAIL_SUMMIT', name: 'Vail & Summit County', center_latitude: 39.550, center_longitude: -106.050, elevation_range_m: '2,500m – 4,300m', primary_snotel_stations: ['505', '531', '415'] },
@@ -186,55 +204,231 @@ export function App() {
     return () => clearInterval(interval);
   }, [isLivePolling]);
 
-  // 3. Evaluate Risk for Selected Location (COLORADO ONLY)
-  const evaluateLocationRisk = async (loc: SelectedLocationState) => {
-    if (selectedDomain === 'INDIA') {
-      // MODEL SAFETY GUARD: Do NOT invoke Colorado model for Indian coordinates
-      return;
+  // 3. Load Authoritative Station Assessment (Single Source of Truth)
+  const loadStationAssessment = async (
+    stationId: string,
+    name: string,
+    lat: number,
+    lon: number,
+    elev: number,
+    slope: number = 36.0,
+    aspect: number = 45.0
+  ) => {
+    if (selectedDomain === 'INDIA') return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
-    setIsLoadingPrediction(true);
-    setApiError(null);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const reqId = ++activeRequestIdRef.current;
+
+    // Immediately set into clean loading state with cleared previous prediction
+    setPredictionContext((prev) => ({
+      ...prev,
+      target_id: stationId,
+      target_name: `SNOTEL ${stationId}: ${name}`,
+      target_type: 'STATION',
+      latitude: lat,
+      longitude: lon,
+      elevation: elev,
+      slope,
+      aspect,
+      isLoading: true,
+      error: null,
+      prediction: null,
+      rules_evaluation: [],
+    }));
+
     try {
-      const pred = await api.predictPoint({
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-        elevation: loc.elevation,
-        slope: loc.slope,
-        aspect: loc.aspect,
-        temperature: loc.temperature,
-        snow_depth: loc.snow_depth,
-        snow_water_equivalent: loc.snow_water_equivalent,
-        snowfall_6h: loc.snowfall_6h,
-        snowfall_24h: loc.snowfall_24h,
-        snowfall_72h: loc.snowfall_72h,
-        temperature_delta_24h: loc.temperature_delta_24h,
-        wind_speed_mean_24h: loc.wind_speed_mean_24h,
-        wind_speed_max_24h: loc.wind_speed_max_24h,
-        location_id: loc.name,
+      const res = await api.getStationAssessment(stationId, slope, aspect, controller.signal);
+      if (activeRequestIdRef.current !== reqId) return;
+
+      setPredictionContext({
+        target_id: stationId,
+        target_name: `SNOTEL ${stationId}: ${res.station_name || name}`,
+        target_type: 'STATION',
+        latitude: res.latitude ?? lat,
+        longitude: res.longitude ?? lon,
+        elevation: res.elevation ?? elev,
+        slope: res.slope ?? slope,
+        aspect: res.aspect ?? aspect,
+        temperature: res.features?.temperature ?? null,
+        humidity: res.features?.humidity ?? null,
+        pressure: res.features?.pressure ?? null,
+        precipitation: res.features?.precipitation ?? null,
+        wind_speed_mean_24h: res.features?.wind_speed_mean_24h ?? null,
+        wind_speed_max_24h: res.features?.wind_speed_max_24h ?? null,
+        snow_depth: res.features?.snow_depth ?? null,
+        snow_water_equivalent: res.features?.snow_water_equivalent ?? null,
+        snowfall_6h: res.features?.snowfall_6h ?? null,
+        snowfall_24h: res.features?.snowfall_24h ?? null,
+        snowfall_72h: res.features?.snowfall_72h ?? null,
+        temperature_delta_24h: res.features?.temperature_delta_24h ?? null,
+        temperature_delta_72h: res.features?.temperature_delta_72h ?? null,
+        telemetry_timestamp: res.telemetry_timestamp || res.last_observation_timestamp,
+        telemetry_age_minutes: res.telemetry_age_minutes,
+        data_quality: res.data_quality || res.telemetry_status || 'GOOD',
+        freshness_state: res.freshness_state || res.telemetry_status || 'GOOD',
+        assessment_status: res.assessment_status || (res.telemetry_status === 'STALE' ? 'SUPPRESSED' : 'CURRENT'),
+        prediction_available: res.prediction_available ?? (res.telemetry_status !== 'STALE'),
+        suppression_reason: res.suppression_reason,
+        current_utc: res.current_utc || new Date().toISOString(),
+        last_observation_timestamp: res.last_observation_timestamp || res.telemetry_timestamp,
+        telemetry_status: res.telemetry_status || 'GOOD',
+        telemetry_source: 'SNOTEL Automated Telemetry (AWDB)',
+        terrain_source: 'Copernicus GLO-30 DEM (30m)',
+        prediction: res.prediction,
+        rules_evaluation: res.rules_evaluation || res.prediction?.rule_evaluations || [],
+        isLoading: false,
+        error: null,
       });
-      setPrediction(pred);
     } catch (err: any) {
-      console.error('Prediction query error:', err);
-      setApiError(err.message || 'Failed to communicate with prediction service.');
-    } finally {
-      setIsLoadingPrediction(false);
+      if (err.name === 'AbortError') return;
+      if (activeRequestIdRef.current !== reqId) return;
+      console.error(`Failed to load assessment for station ${stationId}:`, err);
+      setPredictionContext((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: err.message || `Failed to retrieve assessment for station ${stationId}`,
+      }));
     }
   };
 
-  // Run initial prediction on default Colorado location
+  // 4. Load Custom Point / Zone Assessment
+  const evaluateCustomPointRisk = async (
+    targetName: string,
+    lat: number,
+    lon: number,
+    elev: number = 3450.0,
+    slope: number = 36.0,
+    aspect: number = 45.0,
+    type: 'COORDINATE' | 'ZONE' = 'COORDINATE'
+  ) => {
+    if (selectedDomain === 'INDIA') return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const reqId = ++activeRequestIdRef.current;
+
+    setPredictionContext((prev) => ({
+      ...prev,
+      target_id: `${lat.toFixed(3)},${lon.toFixed(3)}`,
+      target_name: targetName,
+      target_type: type,
+      latitude: lat,
+      longitude: lon,
+      elevation: elev,
+      slope,
+      aspect,
+      isLoading: true,
+      error: null,
+      prediction: null,
+      rules_evaluation: [],
+    }));
+
+    try {
+      const pred = await api.predictPoint({
+        latitude: lat,
+        longitude: lon,
+        elevation: elev,
+        slope,
+        aspect,
+        location_id: targetName,
+      });
+
+      if (activeRequestIdRef.current !== reqId) return;
+
+      const ageMin = freshness?.age_minutes ?? null;
+      const status = freshness?.overall_status || 'GOOD';
+
+      setPredictionContext({
+        target_id: `${lat.toFixed(3)},${lon.toFixed(3)}`,
+        target_name: targetName,
+        target_type: type,
+        latitude: lat,
+        longitude: lon,
+        elevation: elev,
+        slope,
+        aspect,
+        temperature: pred.features?.temperature ?? null,
+        humidity: pred.features?.humidity ?? null,
+        pressure: pred.features?.pressure ?? null,
+        precipitation: pred.features?.precipitation ?? null,
+        wind_speed_mean_24h: pred.features?.wind_speed_mean_24h ?? null,
+        wind_speed_max_24h: pred.features?.wind_speed_max_24h ?? null,
+        snow_depth: pred.features?.snow_depth ?? null,
+        snow_water_equivalent: pred.features?.snow_water_equivalent ?? null,
+        snowfall_6h: pred.features?.snowfall_6h ?? null,
+        snowfall_24h: pred.features?.snowfall_24h ?? null,
+        snowfall_72h: pred.features?.snowfall_72h ?? null,
+        temperature_delta_24h: pred.features?.temperature_delta_24h ?? null,
+        temperature_delta_72h: pred.features?.temperature_delta_72h ?? null,
+        telemetry_timestamp: freshness?.last_update || null,
+        telemetry_age_minutes: ageMin,
+        data_quality: pred.data_quality || status,
+        freshness_state: status,
+        assessment_status: status === 'STALE' ? 'SUPPRESSED' : 'CURRENT',
+        prediction_available: status !== 'STALE',
+        suppression_reason: status === 'STALE' ? 'Telemetry is stale (>6h)' : null,
+        current_utc: new Date().toISOString(),
+        last_observation_timestamp: freshness?.last_update || null,
+        telemetry_status: status,
+        telemetry_source: 'SNOTEL Regional Spatial Interpolation',
+        terrain_source: 'Copernicus GLO-30 DEM (30m)',
+        prediction: pred,
+        rules_evaluation: pred.rule_evaluations || [],
+        isLoading: false,
+        error: null,
+      });
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      if (activeRequestIdRef.current !== reqId) return;
+      console.error('Point prediction query error:', err);
+      setPredictionContext((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: err.message || 'Failed to communicate with prediction service.',
+      }));
+    }
+  };
+
+  // Initial assessment load on Colorado startup
   useEffect(() => {
     if (selectedDomain === 'COLORADO') {
-      evaluateLocationRisk(selectedLocation);
+      loadStationAssessment('335', 'Berthoud Summit', 39.798, -105.778, 3444);
     }
   }, [selectedDomain]);
 
   const handleSelectLocation = (loc: SelectedLocationState) => {
-    setSelectedLocation(loc);
-    evaluateLocationRisk(loc);
+    if (loc.type === 'STATION') {
+      // Find matching station ID if present in name or coords
+      const matchedStation = stations.find(
+        (s) => Math.abs(s.latitude - loc.latitude) < 0.01 && Math.abs(s.longitude - loc.longitude) < 0.01
+      );
+      if (matchedStation) {
+        loadStationAssessment(matchedStation.station_id, matchedStation.name, matchedStation.latitude, matchedStation.longitude, matchedStation.elevation, loc.slope, loc.aspect);
+        return;
+      }
+    }
+    evaluateCustomPointRisk(loc.name, loc.latitude, loc.longitude, loc.elevation, loc.slope, loc.aspect, loc.type === 'ZONE' ? 'ZONE' : 'COORDINATE');
+  };
+
+  const handleSelectStation = (stationId: string, name: string, lat: number, lon: number, elev: number) => {
+    loadStationAssessment(stationId, name, lat, lon, elev, 36.0, 45.0);
   };
 
   const handleTelemetryPrediction = (pred: RiskPredictionResponse) => {
-    setPrediction(pred);
+    setPredictionContext((prev) => ({
+      ...prev,
+      prediction: pred,
+      rules_evaluation: pred.rule_evaluations || prev.rules_evaluation,
+    }));
   };
 
   const handleGenerateRiskSurface = async (params: {
@@ -268,12 +462,34 @@ export function App() {
     return matchesSearch && matchesState;
   });
 
+  // Location state for map centering/active point
+  const mapSelectedLocation: SelectedLocationState = {
+    type: predictionContext.target_type === 'STATION' ? 'STATION' : predictionContext.target_type === 'ZONE' ? 'ZONE' : 'COORDINATE',
+    name: predictionContext.target_name,
+    latitude: predictionContext.latitude,
+    longitude: predictionContext.longitude,
+    elevation: predictionContext.elevation,
+    slope: predictionContext.slope,
+    aspect: predictionContext.aspect,
+    temperature: predictionContext.temperature ?? 0,
+    snow_depth: predictionContext.snow_depth ?? 0,
+    snow_water_equivalent: predictionContext.snow_water_equivalent ?? 0,
+    snowfall_6h: predictionContext.snowfall_6h ?? 0,
+    snowfall_24h: predictionContext.snowfall_24h ?? 0,
+    snowfall_72h: predictionContext.snowfall_72h ?? 0,
+    temperature_delta_24h: predictionContext.temperature_delta_24h ?? 0,
+    wind_speed_mean_24h: predictionContext.wind_speed_mean_24h ?? 0,
+    wind_speed_max_24h: predictionContext.wind_speed_max_24h ?? 0,
+    telemetry_age_minutes: predictionContext.telemetry_age_minutes ?? undefined,
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* 1. Header & Diagnostics */}
       <Header
         health={health}
         freshness={freshness}
+        context={predictionContext}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isLivePolling={isLivePolling}
@@ -286,12 +502,12 @@ export function App() {
       <DisclaimerBanner />
 
       {/* 3. API Disconnected Warning */}
-      {(health?.status === 'error' || apiError) && (
+      {health?.status === 'error' && (
         <div className="bg-red-950 border-b border-red-800 p-3 text-red-200 text-xs flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-red-400" />
             <span>
-              <strong>INFERENCE SERVICE NOTICE:</strong> {apiError || 'Backend at http://localhost:8000 is currently unreachable.'}
+              <strong>INFERENCE SERVICE NOTICE:</strong> Backend at http://localhost:8000 is currently unreachable.
             </span>
           </div>
           <span className="font-mono bg-red-900 px-2 py-0.5 rounded text-[10px]">HTTP 503</span>
@@ -305,7 +521,6 @@ export function App() {
         </main>
       ) : activeTab === 'spatial' ? (
         <main className="flex-1 p-3.5 sm:p-4 space-y-4 max-w-[1600px] mx-auto w-full min-w-0">
-          {/* Spatial Intelligence Control Panel with Embedded Map in Flow */}
           <SpatialIntelligencePanel
             onGenerateRiskSurface={handleGenerateRiskSurface}
             isLoadingSurface={isLoadingSurface}
@@ -319,10 +534,11 @@ export function App() {
                 zones={zones}
                 stations={stations}
                 historicalEvents={historicalEvents}
-                selectedLocation={selectedLocation}
+                selectedLocation={mapSelectedLocation}
                 onSelectLocation={handleSelectLocation}
+                onSelectStation={handleSelectStation}
                 showEvents={showHistoricalEvents}
-                activeRiskLevel={prediction?.final_risk_level}
+                activeRiskLevel={predictionContext.prediction?.final_risk_level}
                 isLiveMode={isLivePolling}
                 layerVisibility={layerVisibility}
                 riskSurface={activeRiskSurface}
@@ -330,6 +546,8 @@ export function App() {
                 indianPeaks={filteredIndianPeaks}
                 selectedIndianPeak={selectedIndianPeak}
                 onSelectIndianPeak={(peak) => setSelectedIndianPeak(peak)}
+                freshness={freshness}
+                context={predictionContext}
               />
             }
           />
@@ -464,10 +682,11 @@ export function App() {
                   zones={zones}
                   stations={stations}
                   historicalEvents={historicalEvents}
-                  selectedLocation={selectedLocation}
+                  selectedLocation={mapSelectedLocation}
                   onSelectLocation={handleSelectLocation}
+                  onSelectStation={handleSelectStation}
                   showEvents={showHistoricalEvents}
-                  activeRiskLevel={prediction?.final_risk_level}
+                  activeRiskLevel={predictionContext.prediction?.final_risk_level}
                   isLiveMode={isLivePolling}
                   layerVisibility={layerVisibility}
                   riskSurface={activeRiskSurface}
@@ -475,6 +694,8 @@ export function App() {
                   indianPeaks={filteredIndianPeaks}
                   selectedIndianPeak={selectedIndianPeak}
                   onSelectIndianPeak={(peak) => setSelectedIndianPeak(peak)}
+                  freshness={freshness}
+                  context={predictionContext}
                 />
               </div>
             </div>
@@ -485,10 +706,30 @@ export function App() {
                 <IndianPeakPanel peak={selectedIndianPeak} />
               ) : (
                 <RiskAssessmentPanel
-                  prediction={prediction}
-                  selectedLocation={selectedLocation}
-                  isLoading={isLoadingPrediction}
-                  onRefresh={() => evaluateLocationRisk(selectedLocation)}
+                  context={predictionContext}
+                  onRefresh={() => {
+                    if (predictionContext.target_type === 'STATION') {
+                      loadStationAssessment(
+                        predictionContext.target_id,
+                        predictionContext.target_name,
+                        predictionContext.latitude,
+                        predictionContext.longitude,
+                        predictionContext.elevation,
+                        predictionContext.slope,
+                        predictionContext.aspect
+                      );
+                    } else {
+                      evaluateCustomPointRisk(
+                        predictionContext.target_name,
+                        predictionContext.latitude,
+                        predictionContext.longitude,
+                        predictionContext.elevation,
+                        predictionContext.slope,
+                        predictionContext.aspect,
+                        predictionContext.target_type === 'ZONE' ? 'ZONE' : 'COORDINATE'
+                      );
+                    }
+                  }}
                 />
               )}
             </div>
@@ -534,16 +775,16 @@ export function App() {
             </div>
           ) : (
             <>
-              {/* Bottom Diagnostics Grid: Terrain + Snowpack + Weather */}
+              {/* Bottom Diagnostics Grid: Terrain + Snowpack + Weather (Connected to Single PredictionContext) */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0 w-full">
                 <div className="min-w-0 w-full">
-                  <TerrainPanel location={selectedLocation} />
+                  <TerrainPanel context={predictionContext} />
                 </div>
                 <div className="min-w-0 w-full">
-                  <SnowpackPanel location={selectedLocation} />
+                  <SnowpackPanel context={predictionContext} />
                 </div>
                 <div className="min-w-0 w-full">
-                  <WeatherPanel location={selectedLocation} />
+                  <WeatherPanel context={predictionContext} />
                 </div>
               </div>
 
@@ -568,4 +809,3 @@ export function App() {
 }
 
 export default App;
-

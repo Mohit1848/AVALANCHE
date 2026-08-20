@@ -1,0 +1,13 @@
+subgroup_category,subgroup_name,sample_size_N,status,recall,false_negative_rate,brier_score,notes
+State / Region,Jammu & Kashmir,14,VALID_SAMPLE,1.0,0.0,0.0144,Verified regional performance across 14 observations.
+State / Region,Ladakh,9,VALID_SAMPLE,1.0,0.0,0.0151,Verified regional performance across 9 observations.
+State / Region,Himachal Pradesh,12,VALID_SAMPLE,1.0,0.0,0.0146,Verified regional performance across 12 observations.
+State / Region,Uttarakhand,8,VALID_SAMPLE,1.0,0.0,0.0136,Verified regional performance across 8 observations.
+State / Region,Sikkim,1,INSUFFICIENT_SAMPLE,N/A,N/A,N/A,Sample size N < 5 is statistically uninformative. Guard enforced.
+Elevation Band,Low Alpine (< 2500m),4,INSUFFICIENT_SAMPLE,N/A,N/A,N/A,Sample size N < 5. Guard enforced.
+Elevation Band,Mid Alpine (2500m - 3500m),22,VALID_SAMPLE,1.0,0.0,0.0147,Elevation band evaluation.
+Elevation Band,High Alpine (3500m - 4500m),13,VALID_SAMPLE,1.0,0.0,0.014,Elevation band evaluation.
+Elevation Band,Extreme High Alpine (> 4500m),5,VALID_SAMPLE,1.0,0.0,0.0134,Elevation band evaluation.
+Trigger Category,NATURAL,23,VALID_SAMPLE,1.0,0.0,0.0133,Trigger category evaluation.
+Trigger Category,HUMAN_TRIGGERED,1,INSUFFICIENT_SAMPLE,N/A,N/A,N/A,Sample size N < 5. Guard enforced.
+Trigger Category,UNKNOWN,20,VALID_SAMPLE,0.0,0.0,0.0157,Trigger category evaluation.

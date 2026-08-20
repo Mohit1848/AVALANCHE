@@ -1,10 +1,12 @@
 import React from 'react';
 import { Shield, Activity, Cpu, Radio, Clock } from 'lucide-react';
-import type { HealthStatus, TelemetryFreshnessStatus, GeographicDomain } from '../../types';
+import type { HealthStatus, TelemetryFreshnessStatus, GeographicDomain, PredictionContext } from '../../types';
+import { formatTelemetryAge, getTelemetryBadgeColor } from '../../utils/formatters';
 
 interface HeaderProps {
   health: HealthStatus | null;
   freshness: TelemetryFreshnessStatus | null;
+  context?: PredictionContext | null;
   activeTab: 'console' | 'spatial' | 'history' | 'playback' | 'research';
   setActiveTab: (tab: 'console' | 'spatial' | 'history' | 'playback' | 'research') => void;
   isLivePolling: boolean;
@@ -16,6 +18,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   health,
   freshness,
+  context,
   activeTab,
   setActiveTab,
   isLivePolling,
@@ -24,51 +27,63 @@ export const Header: React.FC<HeaderProps> = ({
   setSelectedDomain,
 }) => {
   const isOnline = health?.status === 'ok' || health?.status === 'degraded';
-  const isModelLoaded = health?.model_loaded ?? false;
-  const telStatus = freshness?.overall_status || 'GOOD';
-  const ageMin = freshness?.age_minutes ?? health?.telemetry_age_minutes ?? 38;
+  const isColorado = selectedDomain === 'COLORADO';
+  const isModelLoaded = isColorado ? (health?.model_loaded ?? true) : false;
+  const telStatus = context?.freshness_state || freshness?.overall_status || 'GOOD';
+  const ageMin = context?.telemetry_age_minutes ?? freshness?.age_minutes ?? health?.telemetry_age_minutes ?? null;
+  const formattedAge = formatTelemetryAge(ageMin);
 
-  const getTelemetryBadgeColor = (st: string) => {
-    switch (st) {
-      case 'GOOD':
-        return 'bg-emerald-950/60 border-emerald-800 text-emerald-300';
-      case 'DEGRADED':
-        return 'bg-amber-950/60 border-amber-800 text-amber-300';
-      case 'STALE':
-        return 'bg-red-950/60 border-red-800 text-red-300 animate-pulse';
+  const getDomainSubtext = () => {
+    switch (selectedDomain) {
+      case 'COLORADO':
+        return 'Spatiotemporal Decision-Support Console • Colorado Rocky Mountains';
+      case 'INDIA':
+      case 'HIMALAYA':
+        return 'Himalayan Geographic Decision-Support Console • Northern India Peak Catalog';
+      case 'NEPAL':
+        return 'Nepal Himalayan Geographic Reference • High-Altitude Corridors';
+      case 'BHUTAN':
+        return 'Bhutan Eastern Himalayan Geographic Reference';
+      case 'PAKISTAN':
+        return 'Karakoram & Western Himalaya Geographic Reference';
       default:
-        return 'bg-slate-800 border-slate-700 text-slate-300';
+        return 'Geographic Reference';
     }
   };
 
-  const isIndia = selectedDomain === 'INDIA';
+  const getDomainBadge = () => {
+    if (selectedDomain === 'COLORADO') {
+      return { text: 'MODEL ENABLED v3.0', color: 'bg-cyan-950 text-cyan-400 border-cyan-800' };
+    }
+    return { text: 'GEOGRAPHIC ONLY • DATA AUDITED', color: 'bg-amber-950 text-amber-300 border-amber-800' };
+  };
+
+  const badge = getDomainBadge();
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 px-3 sm:px-4 py-2.5 text-slate-100 flex flex-wrap items-center justify-between gap-3 shadow-lg sticky top-0 z-30 font-sans min-w-0">
       <div className="flex items-center gap-3 min-w-0">
-        <div className={`bg-gradient-to-br ${isIndia ? 'from-amber-500 to-orange-600 shadow-amber-500/20' : 'from-cyan-500 to-blue-600 shadow-cyan-500/20'} p-2 rounded-lg text-white shadow-md shrink-0 transition-colors`}>
+        <div className={`bg-gradient-to-br ${!isColorado ? 'from-amber-500 to-orange-600 shadow-amber-500/20' : 'from-cyan-500 to-blue-600 shadow-cyan-500/20'} p-2 rounded-lg text-white shadow-md shrink-0 transition-colors`}>
           <Shield className="w-5 sm:w-6 h-5 sm:h-6" />
         </div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2 truncate">
               <span>AVALANCHE RISK INTELLIGENCE</span>
-              <span className={`text-[10px] sm:text-xs font-mono font-normal ${isIndia ? 'bg-amber-950 text-amber-300 border-amber-800' : 'bg-cyan-950 text-cyan-400 border-cyan-800'} border px-1.5 sm:px-2 py-0.5 rounded shrink-0`}>
-                {isIndia ? 'HIMALAYAN GEOGRAPHY' : 'RESEARCH v2.0'}
+              <span className={`text-[10px] sm:text-xs font-mono font-normal ${badge.color} border px-1.5 sm:px-2 py-0.5 rounded shrink-0`}>
+                {badge.text}
               </span>
             </h1>
           </div>
           <p className="text-[11px] sm:text-xs text-slate-400 truncate">
-            {isIndia
-              ? 'Himalayan Geographic Decision-Support Console • Northern India Peak Catalog'
-              : 'Spatiotemporal Decision-Support Console • Colorado Rocky Mountains'}
+            {getDomainSubtext()}
           </p>
         </div>
       </div>
 
-      {/* Geographic Region Selector */}
+      {/* Geographic Region Selector with Real Model Availability Flags */}
       <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs font-mono gap-2 shrink-0">
-        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">REGION:</span>
+        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">DOMAIN:</span>
         <select
           value={selectedDomain}
           onChange={(e) => setSelectedDomain(e.target.value as GeographicDomain)}
@@ -77,9 +92,11 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <option value="COLORADO">Colorado (Alpine Model Enabled)</option>
           <option value="INDIA">Indian Himalayas (Geographic Catalog)</option>
+          <option value="NEPAL">Nepal Himalayas (Model Not Available)</option>
+          <option value="BHUTAN">Bhutan Himalayas (Model Not Available)</option>
+          <option value="PAKISTAN">Pakistan Karakoram (Model Not Available)</option>
         </select>
       </div>
-
 
       {/* Navigation Tabs */}
       <div className="flex flex-wrap items-center bg-slate-950 border border-slate-800 p-1 rounded-lg gap-0.5 min-w-0">
@@ -158,24 +175,26 @@ export const Header: React.FC<HeaderProps> = ({
           <span>API: {isOnline ? 'ONLINE' : 'UNREACHABLE'}</span>
         </div>
 
-        {/* MODEL */}
+        {/* MODEL STATUS */}
         <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border shrink-0 ${
-          isModelLoaded ? 'bg-cyan-950/60 border-cyan-800 text-cyan-300' : 'bg-amber-950/60 border-amber-800 text-amber-300'
+          isModelLoaded
+            ? 'bg-cyan-950/60 border-cyan-800 text-cyan-300'
+            : 'bg-amber-950/60 border-amber-800 text-amber-300'
         }`}>
           <Cpu className="w-3.5 h-3.5" />
-          <span>MODEL: {isModelLoaded ? 'LOADED' : 'DEGRADED'}</span>
+          <span>MODEL: {isModelLoaded ? 'LOADED' : 'INSUFFICIENT DATA'}</span>
         </div>
 
         {/* TELEMETRY FRESHNESS */}
         <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border shrink-0 ${getTelemetryBadgeColor(telStatus)}`}>
           <Radio className="w-3.5 h-3.5" />
-          <span>TELEMETRY: {telStatus}</span>
+          <span>TELEMETRY: {isColorado ? telStatus : 'PENDING AWS'}</span>
         </div>
 
         {/* TELEMETRY AGE */}
         <div className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-300 text-[11px] shrink-0">
           <Clock className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Age: {ageMin}m</span>
+          <span>Age: {formattedAge}</span>
         </div>
       </div>
     </header>

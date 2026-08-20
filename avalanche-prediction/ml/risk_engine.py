@@ -22,6 +22,77 @@ class RiskResult:
     risk_escalation_reasons: list[str]
     data_quality: str
     warnings: list[str] = field(default_factory=list)
+    rule_evaluations: list[dict[str, Any]] = field(default_factory=list)
+
+
+def evaluate_deterministic_rules(input_data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Compute transparent evaluation status for all deterministic engineering safety rules."""
+    slope = float(input_data.get("slope", 0.0) or 0.0)
+    temp = float(input_data.get("temperature", 0.0) or 0.0)
+    temp_delta_24h = float(input_data.get("temperature_delta_24h", 0.0) or 0.0)
+    snowfall_24h = float(input_data.get("snowfall_24h", 0.0) or input_data.get("snowfall", 0.0) or 0.0)
+    snowfall_72h = float(input_data.get("snowfall_72h", 0.0) or 0.0)
+
+    r1_triggered = (snowfall_24h >= 30.0 or snowfall_72h >= 45.0) and slope >= 34.0
+    r2_triggered = (temp >= 3.0 or temp_delta_24h >= 6.0) and slope >= 35.0
+    r3_triggered = (snowfall_24h >= 15.0 or snowfall_72h >= 25.0) and slope >= 30.0
+
+    return [
+        {
+            "rule_id": "HEAVY_SNOWFALL_STEEP_SLOPE",
+            "rule_name": "Heavy Snowfall on Steep Slope",
+            "description": "Heavy storm snowfall (24h >= 30mm or 72h >= 45mm) on steep starting zone (slope >= 34 deg)",
+            "condition": "(snowfall_24h >= 30.0 or snowfall_72h >= 45.0) and slope >= 34.0",
+            "actual_values": {
+                "snowfall_24h": round(snowfall_24h, 1),
+                "snowfall_72h": round(snowfall_72h, 1),
+                "slope": round(slope, 1),
+            },
+            "thresholds": {
+                "snowfall_24h": ">= 30.0 mm",
+                "snowfall_72h": ">= 45.0 mm",
+                "slope": ">= 34.0 deg",
+            },
+            "status": "TRIGGERED" if r1_triggered else "NOT MET",
+            "target_minimum_level": "HIGH",
+        },
+        {
+            "rule_id": "RAPID_THERMAL_WARMING",
+            "rule_name": "Rapid Thermal Warming",
+            "description": "Rapid thermal warming (T >= 3.0 C or 24h delta >= 6.0 C) on steep slope (slope >= 35 deg)",
+            "condition": "(temp >= 3.0 or temp_delta_24h >= 6.0) and slope >= 35.0",
+            "actual_values": {
+                "temperature": round(temp, 1),
+                "temperature_delta_24h": round(temp_delta_24h, 1),
+                "slope": round(slope, 1),
+            },
+            "thresholds": {
+                "temperature": ">= 3.0 C",
+                "temperature_delta_24h": ">= 6.0 C",
+                "slope": ">= 35.0 deg",
+            },
+            "status": "TRIGGERED" if r2_triggered else "NOT MET",
+            "target_minimum_level": "HIGH",
+        },
+        {
+            "rule_id": "MODERATE_STORM_LOADING",
+            "rule_name": "Moderate Storm Loading",
+            "description": "Moderate storm loading (24h >= 15mm or 72h >= 25mm) on avalanche terrain (slope >= 30 deg)",
+            "condition": "(snowfall_24h >= 15.0 or snowfall_72h >= 25.0) and slope >= 30.0",
+            "actual_values": {
+                "snowfall_24h": round(snowfall_24h, 1),
+                "snowfall_72h": round(snowfall_72h, 1),
+                "slope": round(slope, 1),
+            },
+            "thresholds": {
+                "snowfall_24h": ">= 15.0 mm",
+                "snowfall_72h": ">= 25.0 mm",
+                "slope": ">= 30.0 deg",
+            },
+            "status": "TRIGGERED" if r3_triggered else "NOT MET",
+            "target_minimum_level": "MEDIUM",
+        },
+    ]
 
 
 # Critical features required for any quantitative risk estimate
@@ -167,6 +238,8 @@ def evaluate_risk(
     thresholds: dict[str, float]
 ) -> RiskResult:
     """Main risk engine entry point ensuring fail-safe execution."""
+    rules_eval = evaluate_deterministic_rules(input_data)
+
     # 1. Assess Data Quality
     quality, warnings = assess_data_quality(input_data, feature_columns)
 
@@ -180,7 +253,8 @@ def evaluate_risk(
             risk_escalated=False,
             risk_escalation_reasons=[],
             data_quality="INSUFFICIENT",
-            warnings=warnings
+            warnings=warnings,
+            rule_evaluations=rules_eval,
         )
 
     # 2. Handle missing model probability
@@ -195,7 +269,8 @@ def evaluate_risk(
             risk_escalated=False,
             risk_escalation_reasons=[],
             data_quality=quality,
-            warnings=warnings
+            warnings=warnings,
+            rule_evaluations=rules_eval,
         )
 
     # 3. Apply Safety Policy and Escalations
@@ -215,5 +290,6 @@ def evaluate_risk(
         risk_escalated=is_escalated,
         risk_escalation_reasons=esc_reasons,
         data_quality=quality,
-        warnings=warnings
+        warnings=warnings,
+        rule_evaluations=rules_eval,
     )

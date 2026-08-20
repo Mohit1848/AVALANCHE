@@ -1,0 +1,145 @@
+{
+  "status": "TRAINING_READY",
+  "geographic_catalog": {
+    "peaks_count": 19,
+    "peaks_provenance": {
+      "data_source": "Survey of India / GeoNames / OpenStreetMap Geographic Database",
+      "source_url": "https://www.surveyofindia.gov.in / https://www.geonames.org",
+      "retrieved_at": "2026-08-16T20:45:00Z",
+      "resolution": "Point-level geographic coordinates (WGS84)",
+      "crs": "EPSG:4326 (WGS84)",
+      "disclaimer": "Geographic reference catalog for Himalayan terrain. Not connected to operational avalanche risk predictions."
+    },
+    "regions_count": 5,
+    "regions_list": [
+      "Ladakh (Karakoram & Zanskar)",
+      "Jammu & Kashmir (Pir Panjal & Greater Himalaya)",
+      "Himachal Pradesh (Dhauladhar & Pir Panjal)",
+      "Uttarakhand (Garhwal & Kumaon Himalaya)",
+      "Sikkim (Eastern Himalaya & Kangchenjunga)"
+    ],
+    "planned_stations_status": "FUTURE_DATA_INTEGRATION_READY"
+  },
+  "raw_datasets_found": [
+    "data\\raw\\himalaya\\events\\documented_himalayan_events_and_controls.csv",
+    "data\\raw\\himalaya\\metadata\\catalog.json",
+    "data\\raw\\himalaya\\terrain\\copernicus_glo30_himalayan_terrain.csv",
+    "data\\raw\\himalaya\\weather\\DGRE-DHUNDI_era5_hourly_telemetry.csv",
+    "data\\raw\\himalaya\\weather\\DGRE-DRAS_era5_hourly_telemetry.csv",
+    "data\\raw\\himalaya\\weather\\DGRE-GULMARG_era5_hourly_telemetry.csv",
+    "data\\raw\\himalaya\\weather\\DGRE-JOSHIMATH_era5_hourly_telemetry.csv",
+    "data\\raw\\himalaya\\weather\\IMD-BANIHAL_era5_hourly_telemetry.csv",
+    "data\\raw\\himalaya\\weather\\IMD-GANGTOK_era5_hourly_telemetry.csv",
+    "data\\raw\\himalaya\\weather\\IMD-KEYLONG_era5_hourly_telemetry.csv",
+    "data\\raw\\himalaya\\weather\\IMD-LEH_era5_hourly_telemetry.csv"
+  ],
+  "intermediate_datasets_found": [
+    "data\\intermediate\\himalaya\\dem_terrain_features.csv",
+    "data\\intermediate\\himalaya\\normalized_events.csv",
+    "data\\intermediate\\himalaya\\normalized_weather.csv"
+  ],
+  "processed_datasets_found": [
+    "data\\processed\\himalaya\\canonical_training_himalaya.csv"
+  ],
+  "provenance_catalog_found": true,
+  "catalog_summary": {
+    "total_files_acquired": 10,
+    "total_sources_unacquired": 2,
+    "acquired_datasets": [
+      "documented_himalayan_events_and_controls.csv",
+      "copernicus_glo30_himalayan_terrain.csv",
+      "DGRE-DHUNDI_era5_hourly_telemetry.csv",
+      "DGRE-DRAS_era5_hourly_telemetry.csv",
+      "DGRE-GULMARG_era5_hourly_telemetry.csv",
+      "DGRE-JOSHIMATH_era5_hourly_telemetry.csv",
+      "IMD-BANIHAL_era5_hourly_telemetry.csv",
+      "IMD-GANGTOK_era5_hourly_telemetry.csv",
+      "IMD-KEYLONG_era5_hourly_telemetry.csv",
+      "IMD-LEH_era5_hourly_telemetry.csv"
+    ]
+  },
+  "event_count": 24,
+  "background_count": 20,
+  "unknown_count": 2,
+  "seasons_count": 10,
+  "seasons_list": [
+    "2014-2015",
+    "2015-2016",
+    "2016-2017",
+    "2017-2018",
+    "2018-2019",
+    "2019-2020",
+    "2020-2021",
+    "2021-2022",
+    "2022-2023",
+    "2023-2024"
+  ],
+  "stations_count": 8,
+  "stations_list": [
+    "DGRE-DHUNDI",
+    "DGRE-DRAS",
+    "DGRE-GULMARG",
+    "DGRE-JOSHIMATH",
+    "IMD-BANIHAL",
+    "IMD-GANGTOK",
+    "IMD-KEYLONG",
+    "IMD-LEH"
+  ],
+  "valleys_count": 27,
+  "valleys_list": [
+    "Eastern Himalaya (North Sikkim)",
+    "Garhwal Himalaya (Alaknanda Basin)",
+    "Garhwal Himalaya (Bhagirathi Valley)",
+    "Garhwal Himalaya (Bhyundar Valley)",
+    "Garhwal Himalaya (Chamoli)",
+    "Garhwal Himalaya (Joshimath)",
+    "Garhwal Himalaya (Uttarkashi)",
+    "Greater Himalaya (Bandipora / Gurez)",
+    "Greater Himalaya (Sind Valley)",
+    "Karakoram (Saser Muztagh)",
+    "Kinnaur / Western Himalaya",
+    "Ladakh Range (Leh Corridor)",
+    "Lahaul & Spiti (Chandra Valley)",
+    "Lahaul Valley (Keylong Sector)",
+    "Pir Panjal (Gulmarg Sector)",
+    "Pir Panjal (Kullu / Manali)",
+    "Pir Panjal (Kullu)",
+    "Pir Panjal (Ramban Sector)",
+    "Pir Panjal (Solang Valley)",
+    "Pir Panjal Range (Banihal Sector)",
+    "Pir Panjal Range (Banihal)",
+    "Pir Panjal Range (Kulgam)",
+    "Saltoro Range (Karakoram)",
+    "Shamsbari Range (Kupwara)",
+    "Zanskar / Great Himalaya Ridge",
+    "Zanskar Range (Dras Sector)",
+    "Zanskar Valley (Kargil District)"
+  ],
+  "timestamp_coverage": {
+    "min": "2015-01-20T12:00:00Z",
+    "max": "2024-03-03T11:00:00Z"
+  },
+  "temporal_continuity": "HOURLY_72H_CONTINUOUS",
+  "terrain_availability": "COPERNICUS_GLO30_INGESTED",
+  "weather_telemetry_availability": "ERA5_LAND_HOURLY_INGESTED",
+  "snowpack_availability": "ERA5_SWE_AND_DEPTH_AVAILABLE",
+  "provenance_completeness": "CRYPTOGRAPHIC_SHA256_CATALOGED",
+  "licensing_notes": [],
+  "quality_counts": {
+    "GOOD": 34,
+    "DEGRADED": 2,
+    "STALE": 0,
+    "INSUFFICIENT": 8
+  },
+  "gating_checklist": {
+    "n_events_ge_20": true,
+    "n_background_ge_20": true,
+    "seasons_ge_3": true,
+    "stations_ge_3": true,
+    "valid_backward_telemetry": true,
+    "documented_provenance": true,
+    "defensible_label_semantics": true
+  },
+  "readiness_verdict": "TRAINING_READY",
+  "blocking_reasons": []
+}

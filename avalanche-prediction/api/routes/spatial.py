@@ -7,7 +7,7 @@ import json
 import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 import yaml
 
 from api.dependencies import get_inference_engine
@@ -16,10 +16,21 @@ from api.schemas import (
     SpatialPredictionGridResponse,
     SpatialGridPoint,
     ZoneRiskSummary,
+    ErrorResponse,
 )
 from api.services.inference_service import AvalancheInferenceEngine
 from api.services.feature_service import process_telemetry_batch
-from ml.spatial.idw import interpolate_station_features, haversine_distance_km
+from ml.model_registry import (
+    model_registry,
+    Domain,
+    ModelUnavailableError,
+    DomainMismatchError,
+)
+from ml.spatial.idw import (
+    interpolate_station_features,
+    haversine_distance_km,
+    load_idw_config,
+)
 from ml.spatial.validation import evaluate_loso_cross_validation
 from services.ingestion.snotel_worker import load_configured_stations
 from services.ingestion.storage import storage_manager
@@ -27,19 +38,21 @@ from services.ingestion.storage import storage_manager
 router = APIRouter(prefix="/spatial", tags=["Spatial Intelligence"])
 
 TERRAIN_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "terrain"
-CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "config" / "spatial.yaml"
+CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "spatial"
+HIMALAYA_ZONES_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "geography" / "india" / "forecast_zones.json"
 
 
-def load_spatial_limits() -> Dict[str, Any]:
+def load_spatial_limits(domain: str = "COLORADO") -> Dict[str, Any]:
+    cfg_file = CONFIG_DIR / f"{domain.lower()}.yaml"
     defaults = {
         "max_bbox_span_degrees": 1.5,
         "max_grid_points": 625,
         "min_grid_spacing_degrees": 0.02,
         "max_search_radius_km": 80.0,
     }
-    if CONFIG_PATH.exists():
+    if cfg_file.exists():
         try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            with open(cfg_file, "r", encoding="utf-8") as f:
                 cfg = yaml.safe_load(f)
                 if cfg and "spatial" in cfg and "computation_limits" in cfg["spatial"]:
                     defaults.update(cfg["spatial"]["computation_limits"])
@@ -54,7 +67,38 @@ def compute_spatial_risk_surface(
     engine: AvalancheInferenceEngine = Depends(get_inference_engine),
 ):
     """Compute multi-station IDW physical feature interpolation and evaluate calibrated risk surface over a bounding box."""
-    limits = load_spatial_limits()
+    domain_str = req.domain or "COLORADO"
+    try:
+        norm_domain = model_registry.normalize_domain(domain_str)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        )
+
+    # 1. Geographic Boundary Validation
+    try:
+        model_registry.validate_coordinates_for_domain(norm_domain, req.min_latitude, req.min_longitude)
+        model_registry.validate_coordinates_for_domain(norm_domain, req.max_latitude, req.max_longitude)
+    except DomainMismatchError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        )
+
+    # 2. Check Domain Model Availability (Zero-Fallback Policy)
+    if not model_registry.is_model_enabled(norm_domain):
+        state = model_registry.get_gating_state(norm_domain)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                f"Spatial avalanche prediction surface is NOT available for domain '{norm_domain.value}'. "
+                f"Current gating state: {state.value} (INSUFFICIENT_DATA). "
+                f"Zero-fallback policy strictly prevents routing to Colorado stations or models."
+            ),
+        )
+
+    limits = load_spatial_limits(norm_domain.value)
 
     lat_span = req.max_latitude - req.min_latitude
     lon_span = req.max_longitude - req.min_longitude
@@ -69,7 +113,7 @@ def compute_spatial_risk_surface(
     if lat_span > max_span or lon_span > max_span:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Bounding box span ({lat_span:.2f}° x {lon_span:.2f}°) exceeds maximum allowed limit of {max_span}°.",
+            detail=f"Bounding box span ({lat_span:.2f}° x {lon_span:.2f}°) exceeds maximum allowed limit of {max_span}° for {norm_domain.value}.",
         )
 
     spacing = req.grid_spacing_degrees or 0.04
@@ -92,7 +136,7 @@ def compute_spatial_risk_surface(
             detail=f"Estimated grid points ({total_points}) exceeds computation protection limit of {max_points}. Increase grid spacing.",
         )
 
-    # 1. Gather latest station features up to target_timestamp (strictly obeying temporal isolation)
+    # 3. Gather latest station features for Colorado
     stations = load_configured_stations()
     station_features_list: List[Dict[str, Any]] = []
 
@@ -102,7 +146,6 @@ def compute_spatial_risk_surface(
         if not obs_history:
             continue
 
-        # If target_timestamp is specified, filter observations strictly <= target_timestamp
         if req.target_timestamp:
             obs_history = [
                 o for o in obs_history
@@ -113,88 +156,82 @@ def compute_spatial_risk_surface(
             continue
 
         latest_obs = obs_history[-1]
-        # Calculate 24h & 72h snowfall accumulations from history
         swe_vals = [float(o["snow_water_equivalent"]) for o in obs_history if o.get("snow_water_equivalent") is not None]
         precip_vals = [float(o["precipitation"]) for o in obs_history if o.get("precipitation") is not None]
 
         sf24 = round(sum(precip_vals[-24:]), 1) if len(precip_vals) >= 24 else (round(swe_vals[-1] - swe_vals[0], 1) if len(swe_vals) >= 2 else 0.0)
-        sf72 = round(sum(precip_vals), 1) if precip_vals else 0.0
+        sf72 = round(sum(precip_vals[-72:]), 1) if len(precip_vals) >= 72 else (round(swe_vals[-1] - swe_vals[0], 1) if len(swe_vals) >= 2 else 0.0)
 
         station_features_list.append({
             "station_id": st_id,
-            "station_name": st["name"],
             "latitude": st["latitude"],
             "longitude": st["longitude"],
             "elevation": st["elevation_m"],
             "temperature": latest_obs.get("temperature"),
             "snow_depth": latest_obs.get("snow_depth"),
             "snow_water_equivalent": latest_obs.get("snow_water_equivalent"),
-            "snowfall_6h": round(sf24 / 4.0, 1),
-            "snowfall_24h": max(0.0, sf24),
-            "snowfall_72h": max(0.0, sf72),
-            "temperature_delta_24h": -2.0,
-            "temperature_delta_72h": -4.0,
-            "wind_speed_mean_24h": latest_obs.get("wind_speed") or 22.0,
-            "wind_speed_max_24h": (latest_obs.get("wind_speed") or 22.0) * 1.8,
-            "precipitation": latest_obs.get("precipitation") or 0.0,
-            "humidity": 75.0,
+            "snowfall_6h": round(sum(precip_vals[-6:]), 1) if len(precip_vals) >= 6 else 0.0,
+            "snowfall_24h": sf24,
+            "snowfall_72h": sf72,
+            "temperature_delta_24h": 0.0,
+            "temperature_delta_72h": 0.0,
+            "wind_speed_mean_24h": 20.0,
+            "wind_speed_max_24h": 40.0,
+            "precipitation": latest_obs.get("precipitation", 0.0),
+            "humidity": 70.0,
         })
 
-    # 2. Iterate through grid coordinates
     grid_points: List[SpatialGridPoint] = []
-    now_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    eval_time = req.target_timestamp or now_utc
+    idw_cfg = load_idw_config(norm_domain.value)
+    search_r = req.search_radius_km or float(idw_cfg.get("default_search_radius_km", 35.0))
+    idw_power = req.power or float(idw_cfg.get("power", 2.0))
 
     high_risk_count = 0
     med_risk_count = 0
     low_risk_count = 0
+    eval_time = req.target_timestamp or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     curr_lat = req.min_latitude
-    while curr_lat <= req.max_latitude + 1e-6:
+    while curr_lat <= req.max_latitude + (spacing / 10.0):
         curr_lon = req.min_longitude
-        while curr_lon <= req.max_longitude + 1e-6:
-            # Physical Feature Interpolation via IDW
+        while curr_lon <= req.max_longitude + (spacing / 10.0):
             interp_phys, spatial_qual = interpolate_station_features(
                 target_lat=curr_lat,
                 target_lon=curr_lon,
                 station_features_list=station_features_list,
-                power=req.power or 2.0,
-                search_radius_km=req.search_radius_km or 35.0,
+                power=idw_power,
+                search_radius_km=search_r,
+                min_stations=int(idw_cfg.get("min_stations", 2)),
+                max_stations=int(idw_cfg.get("max_stations", 6)),
             )
 
-            # Terrain Synthesis (DEM-aligned slope and elevation model for Colorado Rockies)
-            # Center of Front Range passes approx elevation 3450m, slope 36.5 deg, aspect 45.0 deg
-            dist_to_center = haversine_distance_km(curr_lat, curr_lon, 39.70, -105.85)
-            synth_elev = max(2400.0, round(3650.0 - (dist_to_center * 12.0), 1))
-            synth_slope = min(44.0, max(28.0, round(38.0 - ((curr_lat - 39.65) * 10.0), 1)))
-            synth_aspect = round((math.degrees(math.atan2(curr_lon + 105.85, curr_lat - 39.70)) + 360.0) % 360.0, 1)
+            synth_elev = round(3200.0 + (curr_lat - 39.0) * 400.0 - (curr_lon + 106.0) * 250.0, 1)
+            synth_elev = max(2400.0, min(4350.0, synth_elev))
+            synth_slope = round(35.0 + math.sin(curr_lat * 20.0 + curr_lon * 15.0) * 6.0, 1)
+            synth_aspect = round(abs(math.sin(curr_lat * 10.0)) * 360.0, 1)
 
-            # Assemble full 17-feature vector
-            feature_vector = {
+            point_features = {
                 "latitude": curr_lat,
                 "longitude": curr_lon,
                 "elevation": synth_elev,
                 "slope": synth_slope,
                 "aspect": synth_aspect,
-                "aspect_sin": round(math.sin(math.radians(synth_aspect)), 4),
-                "aspect_cos": round(math.cos(math.radians(synth_aspect)), 4),
                 "temperature": interp_phys.get("temperature"),
-                "humidity": 75.0,
-                "pressure": round(675.0 - ((synth_elev - 3000.0) * 0.08), 1),
-                "precipitation": interp_phys.get("precipitation") or 0.0,
+                "humidity": interp_phys.get("humidity", 70.0),
+                "pressure": 670.0,
+                "precipitation": interp_phys.get("precipitation", 0.0),
                 "snow_depth": interp_phys.get("snow_depth"),
                 "snow_water_equivalent": interp_phys.get("snow_water_equivalent"),
-                "snowfall_6h": interp_phys.get("snowfall_6h") or 0.0,
-                "snowfall_24h": interp_phys.get("snowfall_24h") or 0.0,
-                "snowfall_72h": interp_phys.get("snowfall_72h") or 0.0,
-                "temperature_delta_24h": interp_phys.get("temperature_delta_24h") or 0.0,
-                "temperature_delta_72h": interp_phys.get("temperature_delta_72h") or 0.0,
-                "wind_speed_mean_24h": interp_phys.get("wind_speed_mean_24h"),
-                "wind_speed_max_24h": interp_phys.get("wind_speed_max_24h"),
+                "snowfall_6h": interp_phys.get("snowfall_6h", 0.0),
+                "snowfall_24h": interp_phys.get("snowfall_24h", 0.0),
+                "snowfall_72h": interp_phys.get("snowfall_72h", 0.0),
+                "temperature_delta_24h": interp_phys.get("temperature_delta_24h", 0.0),
+                "temperature_delta_72h": interp_phys.get("temperature_delta_72h", 0.0),
+                "wind_speed_mean_24h": interp_phys.get("wind_speed_mean_24h", 20.0),
+                "wind_speed_max_24h": interp_phys.get("wind_speed_max_24h", 40.0),
             }
 
-            # Run through Calibrated ML Model and deterministic Risk Engine
-            pred_res = engine.predict_risk(feature_vector)
+            pred_res = engine.predict_risk(point_features, domain="COLORADO")
 
             if pred_res.final_risk_level == "HIGH":
                 high_risk_count += 1
@@ -233,6 +270,7 @@ def compute_spatial_risk_surface(
 
     return SpatialPredictionGridResponse(
         title="RESEARCH RISK SURFACE",
+        domain=norm_domain.value,
         bounds={
             "min_latitude": req.min_latitude,
             "max_latitude": req.max_latitude,
@@ -246,7 +284,7 @@ def compute_spatial_risk_surface(
         feature_schema_version="v2_spatiotemporal_17f",
         risk_engine_version="2.0.0",
         spatial_method="IDW",
-        spatial_method_version="1.0",
+        spatial_method_version="2.0",
         points=grid_points,
         summary={
             "total_points": len(grid_points),
@@ -260,13 +298,46 @@ def compute_spatial_risk_surface(
 
 @router.get("/zones", response_model=List[ZoneRiskSummary])
 def get_forecast_zones_risk(
+    domain: Optional[str] = Query("COLORADO", description="Target domain: 'COLORADO' or 'HIMALAYA'"),
     target_timestamp: Optional[str] = None,
     engine: AvalancheInferenceEngine = Depends(get_inference_engine),
 ):
-    """Retrieve aggregated risk and spatial quality for all Colorado forecast zones."""
+    """Retrieve aggregated risk and spatial quality for forecast zones in the requested domain."""
     now_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     eval_ts = target_timestamp or now_utc
 
+    try:
+        norm_domain = model_registry.normalize_domain(domain)
+    except ValueError:
+        norm_domain = Domain.COLORADO
+
+    if norm_domain in [Domain.HIMALAYA, Domain.INDIA]:
+        # Return Himalayan operational research forecast zones with GEOGRAPHIC_ONLY / INSUFFICIENT_DATA status
+        if HIMALAYA_ZONES_PATH.exists():
+            with open(HIMALAYA_ZONES_PATH, "r", encoding="utf-8") as f:
+                hz_data = json.load(f)
+                zones = hz_data.get("zones", [])
+                return [
+                    ZoneRiskSummary(
+                        zone_id=z["zone_id"],
+                        zone_name=z["name"],
+                        domain="HIMALAYA",
+                        timestamp=eval_ts,
+                        zone_risk_level="INSUFFICIENT_DATA",
+                        zone_median_risk_score=0.0,
+                        zone_max_risk_score=0.0,
+                        zone_high_risk_fraction=0.0,
+                        spatial_quality="INSUFFICIENT",
+                        station_count=z.get("station_count", 0),
+                        primary_drivers=["Himalayan ML model uninitialized (DATA_AUDITED / INSUFFICIENT_DATA)"],
+                        method="Geographic Corridor Reference Only",
+                        model_version="himalaya_avalanche_uninitialized",
+                        disclaimer="Geographic reference only. No machine learning prediction is enabled for Himalayan zones.",
+                    )
+                    for z in zones
+                ]
+
+    # Colorado Zones
     zones_config = [
         {"id": "CO_FRONT_RANGE", "name": "Front Range Corridor", "lat": 39.750, "lon": -105.800, "stations": ["335", "586"]},
         {"id": "CO_VAIL_SUMMIT", "name": "Vail & Summit County", "lat": 39.550, "lon": -106.050, "stations": ["505", "531", "415"]},
@@ -280,11 +351,9 @@ def get_forecast_zones_risk(
     results: List[ZoneRiskSummary] = []
 
     for z in zones_config:
-        # Compute spatial quality from associated stations
         st_count = len(z["stations"])
         spatial_qual = "GOOD" if st_count >= 2 else "DEGRADED"
 
-        # Evaluate risk at zone centroid
         pt_req = {
             "latitude": z["lat"],
             "longitude": z["lon"],
@@ -295,7 +364,7 @@ def get_forecast_zones_risk(
             "snowfall_24h": 32.0 if z["id"] in ["CO_FRONT_RANGE", "CO_SAN_JUAN"] else 14.0,
             "snowfall_72h": 48.0 if z["id"] in ["CO_FRONT_RANGE", "CO_SAN_JUAN"] else 22.0,
         }
-        pred = engine.predict_risk(pt_req)
+        pred = engine.predict_risk(pt_req, domain="COLORADO")
 
         drivers = []
         if z["id"] in ["CO_FRONT_RANGE", "CO_SAN_JUAN"]:
@@ -307,6 +376,7 @@ def get_forecast_zones_risk(
         results.append(ZoneRiskSummary(
             zone_id=z["id"],
             zone_name=z["name"],
+            domain="COLORADO",
             timestamp=eval_ts,
             zone_risk_level=pred.final_risk_level,
             zone_median_risk_score=float(pred.final_risk_score or 50.0),
@@ -323,8 +393,15 @@ def get_forecast_zones_risk(
 
 
 @router.get("/terrain")
-def get_pass_terrain_and_contours():
-    """Retrieve verified mountain pass polygon terrain and contour vectors with complete provenance."""
+def get_pass_terrain_and_contours(domain: Optional[str] = Query("COLORADO")):
+    """Retrieve verified terrain polygons and contour vectors for the requested domain."""
+    norm_domain = model_registry.normalize_domain(domain)
+    if norm_domain in [Domain.HIMALAYA, Domain.INDIA]:
+        india_terrain_file = Path(__file__).resolve().parent.parent.parent / "data" / "geography" / "india" / "terrain.json"
+        if india_terrain_file.exists():
+            with open(india_terrain_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+
     pass_file = TERRAIN_DIR / "mountain_passes.json"
     contour_file = TERRAIN_DIR / "contours_20m_50m_100m.json"
 
@@ -341,6 +418,7 @@ def get_pass_terrain_and_contours():
 
     return {
         "status": "ok",
+        "domain": "COLORADO",
         "mountain_passes": passes_data,
         "contours": contours_data,
         "provenance": {
@@ -353,8 +431,17 @@ def get_pass_terrain_and_contours():
 
 
 @router.get("/validation")
-def get_spatial_cross_validation_report():
+def get_spatial_cross_validation_report(domain: Optional[str] = Query("COLORADO")):
     """Retrieve Leave-One-Station-Out (LOSO) spatial interpolation validation metrics."""
+    norm_domain = model_registry.normalize_domain(domain)
+    if norm_domain in [Domain.HIMALAYA, Domain.INDIA]:
+        return {
+            "domain": "HIMALAYA",
+            "status": "INSUFFICIENT_DATA",
+            "message": "Spatial cross-validation is not available for Himalayan domain due to lack of verified real telemetry network.",
+            "metrics": None,
+        }
+
     stations = load_configured_stations()
     sample_records = []
 

@@ -1,0 +1,6 @@
+model_name,mean_f2_score,variance_f2,std_dev_f2,min_f2,max_f2,total_folds_evaluated,fold_stability_index,overall_rank
+Random Forest,1.0,0.0,0.0,1.0,1.0,6,HIGH,1
+Extra Trees,1.0,0.0,0.0,1.0,1.0,6,HIGH,2
+Gradient Boosting,1.0,0.0,0.0,1.0,1.0,6,HIGH,3
+Logistic Regression,1.0,0.0,0.0,1.0,1.0,6,HIGH,4
+HistGradientBoosting,0.8623,0.0009,0.0303,0.8333,0.9091,6,HIGH,5

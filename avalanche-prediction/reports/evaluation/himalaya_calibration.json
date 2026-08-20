@@ -1,0 +1,29 @@
+{
+  "calibration_comparison": {
+    "uncalibrated": {
+      "brier_score": 0.0003,
+      "ece": 0.005
+    },
+    "sigmoid_platt": {
+      "brier_score": 0.0144,
+      "ece": 0.1197,
+      "selected": true
+    },
+    "isotonic_experimental": {
+      "brier_score": 0.0,
+      "ece": 0.0,
+      "selected": false
+    }
+  },
+  "calibration_curve_points": {
+    "mean_predicted_probabilities": [
+      0.1255,
+      0.8851
+    ],
+    "fraction_of_positives": [
+      0.0,
+      1.0
+    ]
+  },
+  "recommendation": "Sigmoid (Platt) calibration is selected due to sample size constraints (N=44). Isotonic scaling risks severe overfitting on sparse data."
+}

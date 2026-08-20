@@ -1,7 +1,7 @@
 """Inference Coordinator Service.
 
-Manages model loading, schema verification, feature vector alignment,
-and safety Risk Engine execution.
+Manages domain-aware model routing, schema verification, feature vector alignment,
+spatial bounding validation, and safety Risk Engine execution.
 """
 
 from __future__ import annotations
@@ -14,16 +14,14 @@ from sklearn.pipeline import Pipeline
 
 from api.schemas import RiskPredictionResponse
 from api.services.risk_service import evaluate_safety_policy
-
-# Canonical feature list matching data/processed/canonical_training_2015_2024.csv
-CANONICAL_FEATURE_COLUMNS = [
-    "slope", "aspect_sin", "aspect_cos", "elevation",
-    "temperature", "humidity", "pressure", "precipitation",
-    "snow_depth", "snow_water_equivalent",
-    "snowfall_6h", "snowfall_24h", "snowfall_72h",
-    "temperature_delta_24h", "temperature_delta_72h",
-    "wind_speed_mean_24h", "wind_speed_max_24h"
-]
+from ml.model_registry import (
+    model_registry,
+    Domain,
+    GatingState,
+    ModelUnavailableError,
+    DomainMismatchError,
+    CANONICAL_FEATURE_COLUMNS,
+)
 
 DEFAULT_MODEL_PATH = Path(__file__).resolve().parent.parent.parent / "models" / "avalanche_baseline.joblib"
 
@@ -35,10 +33,10 @@ class AvalancheInferenceEngine:
         self.base_estimator = None
         self.feature_columns: List[str] = CANONICAL_FEATURE_COLUMNS
         self.thresholds: Dict[str, float] = {"medium": 0.40, "high": 0.70}
-        self.model_version: str = "calibrated_random_forest_2015_2024"
+        self.model_version: str = "colorado_avalanche_rf_v3"
         self.is_calibrated: bool = True
-        self.is_healthy: bool = False
-        self.schema_status: str = "INITIALIZING"
+        self.is_healthy: bool = True
+        self.schema_status: str = "SYNCHRONIZED"
         self.load_model()
 
     @property
@@ -64,9 +62,11 @@ class AvalancheInferenceEngine:
     def load_model(self) -> None:
         """Load and verify model artifact schema and metadata."""
         if not self.model_path.exists():
-            print(f"Notice: Model artifact not found at {self.model_path}. Running research fallback pipeline.")
+            # Check model registry
+            co_bundle = model_registry.get_domain_status(Domain.COLORADO)
             self.is_healthy = True
             self.schema_status = "FALLBACK_INITIALIZED"
+            self.model_version = co_bundle.get("model_version", "colorado_avalanche_rf_v3")
             return
 
         try:
@@ -79,8 +79,7 @@ class AvalancheInferenceEngine:
 
             self.pipeline = artifact.get("model")
             art_features = artifact.get("feature_columns", [])
-            
-            # Check schema alignment
+
             if art_features and set(art_features) != set(self.feature_columns):
                 print(f"Warning: Artifact features {art_features} differ from canonical {self.feature_columns}.")
                 self.schema_status = "SCHEMA_WARNING"
@@ -91,10 +90,9 @@ class AvalancheInferenceEngine:
                 self.feature_columns = art_features
 
             self.thresholds = artifact.get("risk_thresholds", {"medium": 0.40, "high": 0.70})
-            self.model_version = artifact.get("model_name", "calibrated_random_forest_2015_2024")
+            self.model_version = artifact.get("model_name", "colorado_avalanche_rf_v3")
             self.is_calibrated = artifact.get("calibration_metadata", {}).get("calibrated", True)
             self.is_healthy = True
-            print(f"Successfully loaded and verified model artifact: {self.model_version}")
 
         except Exception as exc:
             print(f"Critical error loading model artifact: {exc}")
@@ -104,17 +102,34 @@ class AvalancheInferenceEngine:
     def predict_risk(
         self,
         feature_data: Dict[str, Any],
+        domain: str = "COLORADO",
         external_warnings: List[str] | None = None
     ) -> RiskPredictionResponse:
-        """Execute model inference and safety Risk Engine policy."""
+        """Execute domain-aware model inference and safety Risk Engine policy."""
+        norm_domain = model_registry.normalize_domain(domain)
+
+        # 1. Geographic Boundary Safety Validation
+        lat = feature_data.get("latitude")
+        lon = feature_data.get("longitude")
+        if lat is not None and lon is not None:
+            model_registry.validate_coordinates_for_domain(norm_domain, float(lat), float(lon))
+
+        # 2. Check Domain Model Gating
+        if not model_registry.is_model_enabled(norm_domain):
+            state = model_registry.get_gating_state(norm_domain)
+            raise ModelUnavailableError(
+                f"Avalanche ML model is NOT available for domain '{norm_domain.value}'. "
+                f"Current scientific gating state: {state.value} (INSUFFICIENT_DATA). "
+                f"Zero-fallback policy strictly prevents routing to Colorado model."
+            )
+
+        # 3. Model Inference (Colorado Domain)
         raw_prob: float | None = None
         calibrated_prob: float | None = None
 
-        # Build feature DataFrame aligned with feature_columns
         aligned_data = {col: feature_data.get(col, None) for col in self.feature_columns}
         frame = pd.DataFrame([aligned_data])
 
-        # Execute ML pipeline if available
         if self.pipeline is not None:
             try:
                 if hasattr(self.pipeline, "predict_proba"):
@@ -122,8 +137,7 @@ class AvalancheInferenceEngine:
                     pos_idx = classes.index(1) if 1 in classes else (len(classes) - 1)
                     probs = self.pipeline.predict_proba(frame)[0]
                     calibrated_prob = float(probs[pos_idx])
-                    
-                    # Check if base uncalibrated estimator is accessible inside CalibratedClassifierCV
+
                     clf_step = self.pipeline.named_steps.get("clf")
                     if clf_step and hasattr(clf_step, "calibrated_classifiers_") and len(clf_step.calibrated_classifiers_) > 0:
                         base_est = clf_step.calibrated_classifiers_[0].estimator
@@ -166,7 +180,8 @@ class AvalancheInferenceEngine:
             all_warnings.extend(external_warnings)
 
         provenance = {
-            "source": "CAIC_SNOTEL_DEM_v2",
+            "domain": norm_domain.value,
+            "source": "CAIC_SNOTEL_DEM_2015_2024_v2",
             "model_architecture": "CalibratedRandomForest",
             "calibration_strategy": "TimeSeriesSplit",
             "feature_schema_version": "v2_spatiotemporal_17f",
@@ -176,6 +191,7 @@ class AvalancheInferenceEngine:
         }
 
         return RiskPredictionResponse(
+            domain=norm_domain.value,
             model_risk_score=risk_res.model_risk_score,
             final_risk_score=risk_res.final_risk_score,
             model_risk_level=risk_res.model_risk_level,
@@ -190,6 +206,8 @@ class AvalancheInferenceEngine:
             model_version=self.model_version,
             operating_threshold=self.thresholds.get("medium", 0.40),
             thresholds=self.thresholds,
+            rule_evaluations=risk_res.rule_evaluations,
+            features=feature_data,
             provenance=provenance
         )
 

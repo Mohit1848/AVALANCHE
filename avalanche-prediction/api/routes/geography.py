@@ -106,6 +106,22 @@ def get_indian_regions():
 
 
 @router.get(
+    "/india/forecast-zones",
+    summary="Get Indian Himalayan operational forecast corridors",
+)
+def get_indian_forecast_zones():
+    return _load_json(INDIA_DIR / "forecast_zones.json")
+
+
+@router.get(
+    "/india/stations",
+    summary="Get Indian Himalayan planned observation corridors and AWS network schema",
+)
+def get_indian_stations():
+    return _load_json(INDIA_DIR / "observation_stations.json")
+
+
+@router.get(
     "/india/terrain",
     summary="Get Indian Himalayan terrain dataset readiness & provenance status",
 )

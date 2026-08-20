@@ -1,5 +1,6 @@
 import type {
   RiskPredictionResponse,
+  StationAssessmentResponse,
   PointPredictionPayload,
   StationTelemetryBatchRequest,
   HealthStatus,
@@ -16,14 +17,34 @@ import type {
   IndianPeak,
   IndianPeaksResponse,
   IndianRegionsResponse,
+  GeographicDomain,
+  DomainStatus,
+  CrossDomainComparison,
 } from '../types';
-
 
 const API_BASE_URL = 'http://localhost:8000';
 
 export const api = {
+  // 0. Authoritative Station Assessment (Single Source of Truth)
+  getStationAssessment: async (
+    stationId: string,
+    slope: number = 36.0,
+    aspect: number = 45.0,
+    signal?: AbortSignal
+  ): Promise<StationAssessmentResponse> => {
+    const res = await fetch(
+      `${API_BASE_URL}/telemetry/${stationId}/assessment?slope=${slope}&aspect=${aspect}`,
+      { signal }
+    );
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || `Failed to fetch assessment for station ${stationId}`);
+    }
+    return await res.json();
+  },
+
   // 1. Point Risk Prediction
-  predictPoint: async (payload: PointPredictionPayload): Promise<RiskPredictionResponse> => {
+  predictPoint: async (payload: PointPredictionPayload & { domain?: GeographicDomain }): Promise<RiskPredictionResponse> => {
     try {
       const response = await fetch(`${API_BASE_URL}/predict/point`, {
         method: 'POST',
@@ -31,10 +52,16 @@ export const api = {
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
-        throw new Error(`Inference service error: ${response.statusText}`);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `Inference error (${response.status}): ${response.statusText}`);
       }
       return await response.json();
-    } catch (err) {
+    } catch (err: any) {
+      if (payload.domain === 'INDIA' || payload.domain === 'HIMALAYA') {
+        throw new Error(
+          err.message || 'Himalayan model is not enabled (INSUFFICIENT_DATA). Zero-fallback policy in effect.'
+        );
+      }
       console.warn('API unavailable; returning deterministic fallback assessment:', err);
       const isSteep = (payload.slope ?? 36) >= 34;
       const isHeavySnow = (payload.snowfall_24h ?? 0) >= 30;
@@ -55,17 +82,17 @@ export const api = {
         warnings: isEscalated ? ['Deterministic Engineering Rule Triggered'] : [],
         raw_probability: isEscalated ? 0.55 : 0.25,
         calibrated_probability: isEscalated ? 0.55 : 0.25,
-        model_version: 'calibrated_random_forest_2015_2024',
+        model_version: 'colorado_avalanche_rf_v3',
         operating_threshold: 0.40,
         thresholds: { medium: 0.40, high: 0.70 },
-        provenance: { source: 'LOCAL_FALLBACK', synthetic: false },
+        provenance: { source: 'LOCAL_FALLBACK', domain: 'COLORADO', synthetic: false },
         disclaimer: 'Research Decision-Support Prototype. Not certified as a standalone warning authority.',
       };
     }
   },
 
   // 2. Batch Telemetry Stream Prediction
-  predictTelemetry: async (payload: StationTelemetryBatchRequest): Promise<RiskPredictionResponse> => {
+  predictTelemetry: async (payload: StationTelemetryBatchRequest & { domain?: GeographicDomain }): Promise<RiskPredictionResponse> => {
     try {
       const response = await fetch(`${API_BASE_URL}/predict/telemetry`, {
         method: 'POST',
@@ -73,12 +100,17 @@ export const api = {
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
-        throw new Error(`Telemetry inference service error: ${response.statusText}`);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || `Telemetry error: ${response.statusText}`);
       }
       return await response.json();
-    } catch (err) {
+    } catch (err: any) {
+      if (payload.domain === 'INDIA' || payload.domain === 'HIMALAYA') {
+        throw err;
+      }
       console.warn('Telemetry API unavailable; returning fallback:', err);
       return api.predictPoint({
+        domain: 'COLORADO',
         latitude: payload.latitude,
         longitude: payload.longitude,
         elevation: payload.elevation,
@@ -93,9 +125,9 @@ export const api = {
   },
 
   // 3. Health & Diagnostics
-  getHealth: async (): Promise<HealthStatus> => {
+  getHealth: async (domain: GeographicDomain = 'COLORADO'): Promise<HealthStatus> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/health`);
+      const res = await fetch(`${API_BASE_URL}/health?domain=${domain}`);
       if (res.ok) return await res.json();
       throw new Error(`Health error: ${res.statusText}`);
     } catch {
@@ -104,20 +136,71 @@ export const api = {
         service: 'avalanche-risk-intelligence-api',
         version: '2.0.0-research',
         subsystems: { api: 'ok', model: 'ok', database: 'ok', risk_engine: 'ok', schema: 'SYNCHRONIZED' },
-        model_loaded: true,
-        model_version: 'calibrated_random_forest_2015_2024',
+        model_loaded: domain === 'COLORADO',
+        model_version: domain === 'COLORADO' ? 'colorado_avalanche_rf_v3' : 'himalaya_uninitialized',
         feature_schema_version: 'v2_spatiotemporal_17f',
-        calibrated: true,
+        calibrated: domain === 'COLORADO',
         active_operating_threshold: 0.40,
         thresholds: { medium: 0.40, high: 0.70 },
         schema_status: 'SYNCHRONIZED',
-        telemetry_age_minutes: 38,
+        telemetry_age_minutes: undefined,
         disclaimer: 'Research Decision-Support Service.',
       };
     }
   },
 
-  // 4. Telemetry Freshness
+  // 4. Domain Status & Gating
+  getDomainStatus: async (domain: GeographicDomain = 'COLORADO'): Promise<DomainStatus> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/model/status?domain=${domain}`);
+      if (res.ok) return await res.json();
+      throw new Error(`Domain status error: ${res.statusText}`);
+    } catch {
+      if (domain === 'COLORADO') {
+        return {
+          domain: 'COLORADO',
+          display_name: 'Colorado Rocky Mountains',
+          gating_state: 'MODEL_ENABLED',
+          model_loaded: true,
+          model_status: 'LOADED',
+          model_version: 'colorado_avalanche_rf_v3',
+          dataset_version: 'CAIC_SNOTEL_DEM_2015_2024_v2',
+          feature_schema_version: 'v2_spatiotemporal_17f',
+          calibration_status: 'CALIBRATED_TEMPORAL_CV3',
+          operating_threshold: 0.40,
+          thresholds: { medium: 0.40, high: 0.70 },
+          disclaimer: 'Research decision-support model trained and evaluated on Colorado avalanche observations.',
+        };
+      }
+      return {
+        domain: domain,
+        display_name: domain === 'INDIA' || domain === 'HIMALAYA' ? 'Indian Himalayas' : `${domain} Himalayas`,
+        gating_state: 'DATA_AUDITED',
+        model_loaded: false,
+        model_status: 'INSUFFICIENT_DATA',
+        model_version: 'himalaya_avalanche_uninitialized',
+        dataset_version: 'GEOGRAPHIC_CATALOG_INDIA_v1',
+        feature_schema_version: 'v2_spatiotemporal_17f',
+        calibration_status: 'NOT_CALIBRATED',
+        operating_threshold: 0.40,
+        thresholds: { medium: 0.40, high: 0.70 },
+        disclaimer: 'Himalayan domain is in GEOGRAPHIC_ONLY / DATA_AUDITED status. Real avalanche training dataset acquisition is pending.',
+      };
+    }
+  },
+
+  // 5. Cross-Domain Comparison
+  getCrossDomainComparison: async (): Promise<CrossDomainComparison | null> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/model/compare`);
+      if (res.ok) return await res.json();
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
+  // 6. Telemetry Freshness
   getTelemetryFreshness: async (): Promise<TelemetryFreshnessStatus> => {
     try {
       const res = await fetch(`${API_BASE_URL}/telemetry/status`);
@@ -125,14 +208,14 @@ export const api = {
       throw new Error(`Telemetry status error: ${res.statusText}`);
     } catch {
       return {
-        overall_status: 'GOOD',
+        overall_status: 'INSUFFICIENT',
         last_update: new Date().toISOString(),
-        age_minutes: 38,
+        age_minutes: 0,
         stations_total: 10,
-        stations_healthy: 9,
-        stations_degraded: 1,
-        stations_stale: 0,
-        warnings: [],
+        stations_healthy: 0,
+        stations_degraded: 0,
+        stations_stale: 10,
+        warnings: ['Failed to reach telemetry status endpoint.'],
       };
     }
   },
@@ -141,7 +224,7 @@ export const api = {
     return api.getTelemetryFreshness();
   },
 
-  // 5. Zones, Stations, and Events
+  // 7. Zones, Stations, and Events
   getZones: async (): Promise<AvalancheZone[]> => {
     try {
       const res = await fetch(`${API_BASE_URL}/model/zones`);
@@ -188,19 +271,19 @@ export const api = {
     ];
   },
 
-  // 6. Model Metadata & Verification
-  getModelMetadata: async (): Promise<ModelMetadata> => {
+  // 8. Model Metadata & Verification
+  getModelMetadata: async (domain: GeographicDomain = 'COLORADO'): Promise<ModelMetadata> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/model/metadata`);
+      const res = await fetch(`${API_BASE_URL}/model/metadata?domain=${domain}`);
       if (res.ok) return await res.json();
       throw new Error(`Metadata error: ${res.statusText}`);
     } catch {
       return {
-        model_name: 'Calibrated Random Forest (2015-2024)',
-        model_version: 'calibrated_random_forest_2015_2024',
+        model_name: domain === 'COLORADO' ? 'Calibrated Random Forest (2015-2024)' : 'Himalayan Domain (Uninitialized)',
+        model_version: domain === 'COLORADO' ? 'colorado_avalanche_rf_v3' : 'himalaya_avalanche_uninitialized',
         feature_schema_version: 'v2_spatiotemporal_17f',
-        training_seasons: ['2015-2016', '2016-2017', '2017-2018', '2018-2019', '2019-2020', '2020-2021'],
-        total_training_records: 48,
+        training_seasons: domain === 'COLORADO' ? ['2015-2016', '2016-2017', '2017-2018', '2018-2019', '2019-2020', '2020-2021'] : [],
+        total_training_records: domain === 'COLORADO' ? 48 : 0,
         features: [
           'slope', 'aspect_sin', 'aspect_cos', 'elevation',
           'temperature', 'humidity', 'pressure', 'precipitation',
@@ -209,20 +292,20 @@ export const api = {
           'temperature_delta_24h', 'temperature_delta_72h',
           'wind_speed_mean_24h', 'wind_speed_max_24h'
         ],
-        calibration_method: 'Sigmoid / TimeSeriesSplit',
-        validation_strategy: 'Walk-forward chronological (3 Folds) + Held-out 2023-2024',
+        calibration_method: domain === 'COLORADO' ? 'Sigmoid / TimeSeriesSplit' : 'Not Calibrated',
+        validation_strategy: domain === 'COLORADO' ? 'Walk-forward chronological (3 Folds) + Held-out 2023-2024' : 'Gated (Pending Ingestion)',
         operating_threshold: 0.40,
         metrics: {
-          walk_forward_average_recall: 0.9167,
-          walk_forward_average_precision: 0.8462,
-          walk_forward_average_f2: 0.9014,
-          walk_forward_average_pr_auc: 0.9431,
-          held_out_2023_2024_recall: 0.9000,
-          held_out_2023_2024_precision: 0.9000,
-          held_out_2023_2024_f2: 0.9000,
-          held_out_2023_2024_brier: 0.0985,
+          walk_forward_average_recall: domain === 'COLORADO' ? 0.9167 : 0,
+          walk_forward_average_precision: domain === 'COLORADO' ? 0.8462 : 0,
+          walk_forward_average_f2: domain === 'COLORADO' ? 0.9014 : 0,
+          walk_forward_average_pr_auc: domain === 'COLORADO' ? 0.9431 : 0,
+          held_out_2023_2024_recall: domain === 'COLORADO' ? 0.9000 : 0,
+          held_out_2023_2024_precision: domain === 'COLORADO' ? 0.9000 : 0,
+          held_out_2023_2024_f2: domain === 'COLORADO' ? 0.9000 : 0,
+          held_out_2023_2024_brier: domain === 'COLORADO' ? 0.0985 : 0,
         },
-        feature_importance: [
+        feature_importance: domain === 'COLORADO' ? [
           { feature: 'slope', importance: 0.2310 },
           { feature: 'snowfall_72h', importance: 0.1750 },
           { feature: 'snowfall_24h', importance: 0.1420 },
@@ -232,16 +315,16 @@ export const api = {
           { feature: 'elevation', importance: 0.0640 },
           { feature: 'aspect_cos', importance: 0.0520 },
           { feature: 'temperature', importance: 0.0530 },
-        ],
+        ] : [],
         disclaimer: 'Research Decision-Support Service.',
       };
     }
   },
 
-  // 7. Scientific Model Validation Report (Phase 6)
-  getScientificEvaluationReport: async (): Promise<ScientificEvaluationReport | null> => {
+  // 9. Scientific Model Validation Report
+  getScientificEvaluationReport: async (domain: GeographicDomain = 'COLORADO'): Promise<ScientificEvaluationReport | null> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/model/scientific-evaluation`);
+      const res = await fetch(`${API_BASE_URL}/model/scientific-evaluation?domain=${domain}`);
       if (res.ok) return await res.json();
       return null;
     } catch {
@@ -249,7 +332,7 @@ export const api = {
     }
   },
 
-  // 8. Prediction History
+  // 10. Prediction History
   getPredictionHistory: async (stationId?: string): Promise<PersistedPredictionRecord[]> => {
     try {
       const url = stationId ? `${API_BASE_URL}/predictions?station_id=${stationId}` : `${API_BASE_URL}/predictions`;
@@ -264,11 +347,9 @@ export const api = {
     }
   },
 
-  // =====================================================================
-  // Phase 5: Spatial Intelligence API Calls
-  // =====================================================================
-
+  // 11. Spatial Intelligence API Calls
   predictSpatialGrid: async (params: {
+    domain?: GeographicDomain;
     min_latitude: number;
     max_latitude: number;
     min_longitude: number;
@@ -284,8 +365,12 @@ export const api = {
         body: JSON.stringify(params),
       });
       if (res.ok) return await res.json();
-      throw new Error(`Spatial grid error: ${res.statusText}`);
-    } catch (err) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || `Spatial grid error: ${res.statusText}`);
+    } catch (err: any) {
+      if (params.domain === 'INDIA' || params.domain === 'HIMALAYA') {
+        throw err;
+      }
       console.warn('Spatial grid API error; generating local fallback grid:', err);
       const points = [
         {
@@ -298,45 +383,22 @@ export const api = {
           snowfall_24h: 32.0,
           snowfall_72h: 48.0,
           snow_water_equivalent: 240.0,
-          raw_probability: 0.58,
-          calibrated_probability: 0.65,
-          model_risk_score: 65,
-          final_risk_score: 80,
-          model_risk_level: 'MEDIUM' as const,
+          raw_probability: 0.72,
+          calibrated_probability: 0.76,
+          model_risk_score: 76.0,
+          final_risk_score: 76.0,
+          model_risk_level: 'HIGH' as const,
           final_risk_level: 'HIGH' as const,
-          risk_escalated: true,
-          risk_escalation_reasons: ['Heavy 24h snowfall on steep slope'],
-          spatial_quality: 'GOOD' as const,
-          nearest_station_distance_km: 8.5,
-          station_count: 3,
-          stations_used: ['586', '335'],
-          spatial_warning: null,
-        },
-        {
-          latitude: params.max_latitude - 0.02,
-          longitude: params.max_longitude - 0.02,
-          elevation: 3350,
-          slope: 28.0,
-          aspect: 180.0,
-          temperature: -4.5,
-          snowfall_24h: 12.0,
-          snowfall_72h: 20.0,
-          snow_water_equivalent: 160.0,
-          raw_probability: 0.18,
-          calibrated_probability: 0.20,
-          model_risk_score: 20,
-          final_risk_score: 20,
-          model_risk_level: 'LOW' as const,
-          final_risk_level: 'LOW' as const,
           risk_escalated: false,
           risk_escalation_reasons: [],
           spatial_quality: 'GOOD' as const,
-          nearest_station_distance_km: 12.0,
-          station_count: 2,
-          stations_used: ['335'],
+          nearest_station_distance_km: 4.2,
+          station_count: 3,
+          stations_used: ['335', '586'],
           spatial_warning: null,
         },
       ];
+
       return {
         title: 'RESEARCH RISK SURFACE',
         bounds: {
@@ -347,119 +409,115 @@ export const api = {
         },
         grid_points_count: points.length,
         timestamp: new Date().toISOString(),
-        model_version: 'calibrated_random_forest_2015_2024',
+        model_version: 'colorado_avalanche_rf_v3',
         dataset_version: '2015_2024_expanded',
         feature_schema_version: 'v2_spatiotemporal_17f',
         risk_engine_version: '2.0.0',
         spatial_method: 'IDW',
-        spatial_method_version: '1.0',
-        points,
+        spatial_method_version: '2.0',
+        points: points,
         summary: {
           total_points: points.length,
           high_risk_points: 1,
           medium_risk_points: 0,
-          low_risk_points: 1,
-          high_risk_fraction: 0.5,
+          low_risk_points: 0,
+          high_risk_fraction: 1.0,
         },
-        disclaimer: 'Interpolated/model-derived research visualization — not an official avalanche forecast.',
+        disclaimer: 'Research visualization. Use official CAIC bulletins for all travel decisions.',
       };
     }
   },
 
-  getForecastZones: async (): Promise<ZoneRiskSummary[]> => {
+  getForecastZones: async (domain: GeographicDomain = 'COLORADO'): Promise<ZoneRiskSummary[]> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/spatial/zones`);
+      const res = await fetch(`${API_BASE_URL}/spatial/zones?domain=${domain}`);
       if (res.ok) return await res.json();
-      throw new Error(`Zones error: ${res.statusText}`);
+      throw new Error(`Forecast zones error: ${res.statusText}`);
     } catch {
+      if (domain === 'INDIA' || domain === 'HIMALAYA') {
+        return [
+          {
+            zone_id: 'HIM-PIR-PANJAL',
+            zone_name: 'Pir Panjal (Gulmarg / Banihal)',
+            timestamp: new Date().toISOString(),
+            zone_risk_level: 'INSUFFICIENT_DATA',
+            zone_median_risk_score: 0.0,
+            zone_max_risk_score: 0.0,
+            zone_high_risk_fraction: 0.0,
+            spatial_quality: 'INSUFFICIENT',
+            station_count: 2,
+            primary_drivers: ['Himalayan ML model uninitialized (DATA_AUDITED / INSUFFICIENT_DATA)'],
+            method: 'Geographic Corridor Reference Only',
+            model_version: 'himalaya_avalanche_uninitialized',
+            disclaimer: 'Geographic reference only.',
+          }
+        ];
+      }
       return [
         {
           zone_id: 'CO_FRONT_RANGE',
           zone_name: 'Front Range Corridor',
           timestamp: new Date().toISOString(),
           zone_risk_level: 'HIGH',
-          zone_median_risk_score: 75.0,
-          zone_max_risk_score: 88.0,
-          zone_high_risk_fraction: 0.40,
+          zone_median_risk_score: 72.0,
+          zone_max_risk_score: 84.0,
+          zone_high_risk_fraction: 0.35,
           spatial_quality: 'GOOD',
           station_count: 2,
-          primary_drivers: ['Heavy 24h storm loading on steep slopes'],
-          method: 'IDW Feature Interpolation',
-          model_version: 'calibrated_random_forest_2015_2024',
-        },
-        {
-          zone_id: 'CO_VAIL_SUMMIT',
-          zone_name: 'Vail & Summit County',
-          timestamp: new Date().toISOString(),
-          zone_risk_level: 'MEDIUM',
-          zone_median_risk_score: 52.0,
-          zone_max_risk_score: 65.0,
-          zone_high_risk_fraction: 0.15,
-          spatial_quality: 'GOOD',
-          station_count: 3,
-          primary_drivers: ['Moderate wind slab accumulation'],
-          method: 'IDW Feature Interpolation',
-          model_version: 'calibrated_random_forest_2015_2024',
-        },
+          primary_drivers: ['Heavy 24h storm loading (>30mm) on steep slopes (>34°)'],
+          method: 'IDW Feature Interpolation + Risk Engine Policy',
+          model_version: 'colorado_avalanche_rf_v3',
+          disclaimer: 'Research decision-support zone evaluation.',
+        }
       ];
     }
   },
 
-  getSpatialValidation: async (): Promise<SpatialValidationMetrics> => {
+  getSpatialValidation: async (domain: GeographicDomain = 'COLORADO'): Promise<SpatialValidationMetrics | null> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/spatial/validation`);
+      const res = await fetch(`${API_BASE_URL}/spatial/validation?domain=${domain}`);
       if (res.ok) return await res.json();
-      throw new Error(`Spatial validation error: ${res.statusText}`);
+      return null;
     } catch {
-      return {
-        title: 'SPATIAL INTERPOLATION VALIDATION',
-        method: 'Inverse Distance Weighting (IDW)',
-        validation_strategy: 'Leave-One-Station-Out (LOSO)',
-        temporal_filter: 'T_obs <= T_target (Strict backward isolation)',
-        power: 2.0,
-        search_radius_km: 35.0,
-        variables: {
-          temperature: { mae: 1.42, rmse: 1.85, bias: -0.18, n_stations_evaluated: 10 },
-          snowfall_24h: { mae: 4.80, rmse: 6.25, bias: 0.45, n_stations_evaluated: 10 },
-          snow_water_equivalent: { mae: 18.50, rmse: 24.10, bias: -1.20, n_stations_evaluated: 10 },
-        },
-        disclaimer: 'Evaluates spatial feature interpolation error between stations. Not a measure of model accuracy.',
-      };
+      return null;
     }
   },
 
-  // 13. Indian Himalayan Geography Endpoints
+  // 12. Indian Himalayan Geography Catalog
   getIndianPeaks: async (params?: { region?: string; state?: string; search?: string }): Promise<IndianPeaksResponse> => {
-    const query = new URLSearchParams();
-    if (params?.region) query.set('region', params.region);
-    if (params?.state) query.set('state', params.state);
-    if (params?.search) query.set('search', params.search);
-
     try {
-      const res = await fetch(`${API_BASE_URL}/geography/india/peaks?${query.toString()}`);
-      if (res.ok) return await res.json();
+      const queryParams = new URLSearchParams();
+      if (params?.region) queryParams.append('region', params.region);
+      if (params?.state) queryParams.append('state', params.state);
+      if (params?.search) queryParams.append('search', params.search);
+
+      const url = `${API_BASE_URL}/geography/india/peaks${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        return await res.json();
+      }
       throw new Error(`Indian peaks error: ${res.statusText}`);
     } catch {
-      const fallbackPeaks = [
-        { id: 'IN-ND-001', name: 'Nanda Devi', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Garhwal Himalaya', latitude: 30.376, longitude: 79.971, elevation_m: 7816, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-KM-002', name: 'Kamet', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Zaskar Range / Garhwal', latitude: 30.925, longitude: 79.593, elevation_m: 7756, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-SK-003', name: 'Saser Kangri', country: 'India', state: 'Ladakh', region: 'Karakoram / Ladakh Range', mountain_range: 'Saser Muztagh (Karakoram)', latitude: 34.867, longitude: 77.753, elevation_m: 7672, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-MK-004', name: 'Mamostong Kangri', country: 'India', state: 'Ladakh', region: 'Karakoram / Ladakh Range', mountain_range: 'Rimo Muztagh (Karakoram)', latitude: 35.143, longitude: 77.576, elevation_m: 7516, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-SK-005', name: 'Saltoro Kangri', country: 'India', state: 'Ladakh', region: 'Karakoram / Ladakh Range', mountain_range: 'Saltoro Mountains (Karakoram)', latitude: 35.399, longitude: 76.849, elevation_m: 7742, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-NN-006', name: 'Nun', country: 'India', state: 'Ladakh', region: 'Zanskar Range', mountain_range: 'Nun Kun Massif (Zanskar)', latitude: 33.981, longitude: 76.022, elevation_m: 7135, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-KN-007', name: 'Kun', country: 'India', state: 'Ladakh', region: 'Zanskar Range', mountain_range: 'Nun Kun Massif (Zanskar)', latitude: 34.012, longitude: 76.059, elevation_m: 7077, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-CK-008', name: 'Chaukhamba', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Gangotri Group (Garhwal)', latitude: 30.748, longitude: 79.289, elevation_m: 7138, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-TS-009', name: 'Trishul', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Nanda Devi Sanctuary (Garhwal)', latitude: 30.315, longitude: 79.776, elevation_m: 7120, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-NK-010', name: 'Nilkanth', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Alaknanda Basin (Garhwal)', latitude: 30.628, longitude: 79.405, elevation_m: 6596, type: 'PROMINENT_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-MP-011', name: 'Mana Peak', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Zaskar Range / Garhwal', latitude: 30.881, longitude: 79.608, elevation_m: 7272, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-RP-012', name: 'Reo Purgyil', country: 'India', state: 'Himachal Pradesh', region: 'Kinnaur / Spiti', mountain_range: 'Western Himalaya / Zaskar', latitude: 31.883, longitude: 78.736, elevation_m: 6816, type: 'STATE_HIGHEST_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-DT-013', name: 'Deo Tibba', country: 'India', state: 'Himachal Pradesh', region: 'Kullu / Pir Panjal', mountain_range: 'Pir Panjal Range', latitude: 32.196, longitude: 77.385, elevation_m: 6001, type: 'PROMINENT_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-HT-014', name: 'Hanuman Tibba', country: 'India', state: 'Himachal Pradesh', region: 'Dhauladhar / Pir Panjal', mountain_range: 'Dhauladhar Range', latitude: 32.342, longitude: 77.042, elevation_m: 5928, type: 'RANGE_HIGHEST_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-KJ-015', name: 'Kangchenjunga', country: 'India', state: 'Sikkim', region: 'Eastern Himalaya / Sikkim', mountain_range: 'Kangchenjunga Himal', latitude: 27.703, longitude: 88.148, elevation_m: 8586, type: 'EIGHT_THOUSANDER', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-JS-016', name: 'Jongsong Peak', country: 'India', state: 'Sikkim', region: 'Eastern Himalaya / Sikkim', mountain_range: 'Kangchenjunga Section', latitude: 27.883, longitude: 88.133, elevation_m: 7462, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-KB-017', name: 'Kabru', country: 'India', state: 'Sikkim', region: 'Eastern Himalaya / Sikkim', mountain_range: 'Singalila Ridge (Kangchenjunga)', latitude: 27.633, longitude: 88.117, elevation_m: 7412, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-PH-018', name: 'Pauhunri', country: 'India', state: 'Sikkim', region: 'Eastern Himalaya / North Sikkim', mountain_range: 'Eastern Himalaya', latitude: 27.950, longitude: 88.850, elevation_m: 7128, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
-        { id: 'IN-SN-019', name: 'Siniolchu', country: 'India', state: 'Sikkim', region: 'Eastern Himalaya / Sikkim', mountain_range: 'Kangchenjunga Massif', latitude: 27.665, longitude: 88.358, elevation_m: 6888, type: 'PROMINENT_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' as const },
+      const fallbackPeaks: IndianPeak[] = [
+        { id: 'IN-ND-001', name: 'Nanda Devi', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Garhwal Himalaya', latitude: 30.376, longitude: 79.971, elevation_m: 7816, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-KM-002', name: 'Kamet', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Zaskar Range / Garhwal', latitude: 30.931, longitude: 79.570, elevation_m: 7756, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-SK-003', name: 'Saser Kangri', country: 'India', state: 'Ladakh', region: 'Karakoram (Saser Muztagh)', mountain_range: 'Saser Muztagh / Karakoram', latitude: 34.867, longitude: 77.753, elevation_m: 7672, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-MK-004', name: 'Mamostong Kangri', country: 'India', state: 'Ladakh', region: 'Karakoram (Rimo Muztagh)', mountain_range: 'Rimo Muztagh / Karakoram', latitude: 35.143, longitude: 77.569, elevation_m: 7516, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-ST-005', name: 'Saltoro Kangri', country: 'India', state: 'Ladakh', region: 'Saltoro Ridge (Siachen)', mountain_range: 'Saltoro Range / Karakoram', latitude: 35.399, longitude: 76.848, elevation_m: 7742, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-NU-006', name: 'Nun', country: 'India', state: 'Ladakh', region: 'Suru Valley / Zanskar', mountain_range: 'Zanskar Range', latitude: 33.981, longitude: 76.022, elevation_m: 7135, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-KU-007', name: 'Kun', country: 'India', state: 'Ladakh', region: 'Suru Valley / Zanskar', mountain_range: 'Zanskar Range', latitude: 34.013, longitude: 76.059, elevation_m: 7077, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-CB-008', name: 'Chaukhamba', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Gangotri Group / Garhwal', latitude: 30.747, longitude: 79.281, elevation_m: 7138, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-TR-009', name: 'Trishul', country: 'India', state: 'Uttarakhand', region: 'Garhwal / Kumaon', mountain_range: 'Nanda Devi Sanctuary Ring', latitude: 30.315, longitude: 79.774, elevation_m: 7120, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-NK-010', name: 'Nilkanth', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Alaknanda Basin (Garhwal)', latitude: 30.628, longitude: 79.405, elevation_m: 6596, type: 'PROMINENT_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-MP-011', name: 'Mana Peak', country: 'India', state: 'Uttarakhand', region: 'Garhwal Himalaya', mountain_range: 'Zaskar Range / Garhwal', latitude: 30.881, longitude: 79.608, elevation_m: 7272, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-RP-012', name: 'Reo Purgyil', country: 'India', state: 'Himachal Pradesh', region: 'Kinnaur / Spiti', mountain_range: 'Western Himalaya / Zaskar', latitude: 31.883, longitude: 78.736, elevation_m: 6816, type: 'STATE_HIGHEST_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-DT-013', name: 'Deo Tibba', country: 'India', state: 'Himachal Pradesh', region: 'Kullu / Pir Panjal', mountain_range: 'Pir Panjal Range', latitude: 32.196, longitude: 77.385, elevation_m: 6001, type: 'PROMINENT_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-HT-014', name: 'Hanuman Tibba', country: 'India', state: 'Himachal Pradesh', region: 'Dhauladhar / Pir Panjal', mountain_range: 'Dhauladhar Range', latitude: 32.342, longitude: 77.042, elevation_m: 5928, type: 'RANGE_HIGHEST_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-KJ-015', name: 'Kangchenjunga', country: 'India', state: 'Sikkim', region: 'Eastern Himalaya / Sikkim', mountain_range: 'Kangchenjunga Himal', latitude: 27.703, longitude: 88.148, elevation_m: 8586, type: 'EIGHT_THOUSANDER', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-JS-016', name: 'Jongsong Peak', country: 'India', state: 'Sikkim', region: 'Eastern Himalaya / Sikkim', mountain_range: 'Kangchenjunga Section', latitude: 27.883, longitude: 88.133, elevation_m: 7462, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-KB-017', name: 'Kabru', country: 'India', state: 'Sikkim', region: 'Eastern Himalaya / Sikkim', mountain_range: 'Singalila Ridge (Kangchenjunga)', latitude: 27.633, longitude: 88.117, elevation_m: 7412, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-PH-018', name: 'Pauhunri', country: 'India', state: 'Sikkim', region: 'Eastern Himalaya / North Sikkim', mountain_range: 'Eastern Himalaya', latitude: 27.950, longitude: 88.850, elevation_m: 7128, type: 'MAJOR_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
+        { id: 'IN-SN-019', name: 'Siniolchu', country: 'India', state: 'Sikkim', region: 'Eastern Himalaya / Sikkim', mountain_range: 'Kangchenjunga Massif', latitude: 27.665, longitude: 88.358, elevation_m: 6888, type: 'PROMINENT_PEAK', data_source: 'Survey of India / GeoNames', terrain_source: 'Copernicus GLO-30 / Survey of India DEM', verified: true, risk_capability: 'GEOGRAPHIC_ONLY' },
       ];
       return {
         provenance: {
@@ -482,9 +540,8 @@ export const api = {
       if (res.ok) return await res.json();
       throw new Error(`Indian peak ${peakId} error: ${res.statusText}`);
     } catch {
-      const peaksRes: IndianPeaksResponse = await api.getIndianPeaks();
+      const peaksRes = await api.getIndianPeaks();
       const match = peaksRes.peaks.find((p: IndianPeak) => p.id.toLowerCase() === peakId.toLowerCase());
-
       if (match) return match;
       throw new Error(`Peak ${peakId} not found`);
     }
@@ -493,7 +550,6 @@ export const api = {
   getIndianRegions: async (): Promise<IndianRegionsResponse> => {
     try {
       const res = await fetch(`${API_BASE_URL}/geography/india/regions`);
-
       if (res.ok) return await res.json();
       throw new Error(`Indian regions error: ${res.statusText}`);
     } catch {

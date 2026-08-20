@@ -1,0 +1,8 @@
+feature_subset,feature_count,recall,precision,f2_score,brier_score,pr_auc,scientific_interpretation
+Terrain Only,4,1.0,1.0,1.0,0.0632,1.0,MODEL ASSOCIATION — NOT CAUSALITY
+Weather Only,6,1.0,1.0,1.0,0.0,1.0,MODEL ASSOCIATION — NOT CAUSALITY
+Snowpack Only,2,1.0,1.0,1.0,0.0,1.0,MODEL ASSOCIATION — NOT CAUSALITY
+Temporal Only,5,1.0,1.0,1.0,0.0,1.0,MODEL ASSOCIATION — NOT CAUSALITY
+Terrain + Weather,10,1.0,1.0,1.0,0.0003,1.0,MODEL ASSOCIATION — NOT CAUSALITY
+Terrain + Snowpack,8,1.0,1.0,1.0,0.0037,1.0,MODEL ASSOCIATION — NOT CAUSALITY
+Full Canonical Set (17 Features),17,1.0,1.0,1.0,0.0001,1.0,MODEL ASSOCIATION — NOT CAUSALITY

@@ -13,7 +13,8 @@ import yaml
 
 from ml.spatial.uncertainty import evaluate_spatial_quality, SpatialQualityResult
 
-CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "config" / "spatial.yaml"
+CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "spatial"
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "config" / "spatial.yaml"
 
 
 def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -29,17 +30,25 @@ def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) ->
     return round(r_earth_km * c, 3)
 
 
-def load_idw_config() -> Dict[str, Any]:
-    """Load IDW parameters from configuration."""
+def load_idw_config(domain: str = "COLORADO") -> Dict[str, Any]:
+    """Load IDW parameters from domain-specific configuration."""
+    domain_upper = domain.upper() if domain else "COLORADO"
+    if domain_upper in ["INDIA", "HIMALAYAS"]:
+        domain_upper = "HIMALAYA"
+
     defaults = {
         "power": 2.0,
-        "default_search_radius_km": 35.0,
+        "default_search_radius_km": 65.0 if domain_upper == "HIMALAYA" else 35.0,
         "min_stations": 2,
-        "max_stations": 6,
+        "max_stations": 5 if domain_upper == "HIMALAYA" else 6,
     }
-    if CONFIG_PATH.exists():
+
+    cfg_file = CONFIG_DIR / f"{domain_upper.lower()}.yaml"
+    target_path = cfg_file if cfg_file.exists() else DEFAULT_CONFIG_PATH
+
+    if target_path.exists():
         try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            with open(target_path, "r", encoding="utf-8") as f:
                 cfg = yaml.safe_load(f)
                 if cfg and "spatial" in cfg and "idw" in cfg["spatial"]:
                     defaults.update(cfg["spatial"]["idw"])
