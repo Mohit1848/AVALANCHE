@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import {
-  ShieldAlert,
   AlertTriangle,
-  Cpu,
-  AlertOctagon,
+  Radio,
+  RefreshCw,
+  Target,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   XCircle,
   Database,
-  ChevronDown,
-  ChevronUp,
-  Thermometer,
-  Snowflake,
-  Wind,
-  Droplets,
-  Radio,
-  RefreshCw,
+  Activity,
 } from 'lucide-react';
 import type { PredictionContext } from '../../types';
 import { formatTelemetryAge } from '../../utils/formatters';
+import { resolveRiskDisplayState } from '../../utils/riskDisplayAdapter';
+import { StatusPill, DataTable, DataRow } from '../ui/Primitives';
+import { CircularRiskGauge } from './CircularRiskGauge';
+import { ModelPolicyComparison } from './ModelPolicyComparison';
+import { PolicyEscalationReasons } from './PolicyEscalationReasons';
 
 interface RiskAssessmentPanelProps {
   context: PredictionContext;
@@ -34,15 +34,14 @@ export const RiskAssessmentPanel: React.FC<RiskAssessmentPanelProps> = ({
 }) => {
   const [showHistoricalRules, setShowHistoricalRules] = useState(false);
   const [showTelemetryDetails, setShowTelemetryDetails] = useState(true);
+  const [showProvenanceDetails, setShowProvenanceDetails] = useState(true);
 
   if (context.isLoading) {
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center space-y-4 animate-pulse">
-        <div className="w-12 h-12 bg-slate-800 rounded-full mx-auto"></div>
-        <div className="h-4 bg-slate-800 rounded w-3/4 mx-auto"></div>
-        <div className="h-3 bg-slate-800 rounded w-1/2 mx-auto"></div>
-        <div className="text-xs text-cyan-400 font-mono font-bold tracking-wider uppercase">
-          LOADING ASSESSMENT & RUNNING SAFETY EVALUATION...
+      <div className="panel p-8 text-center space-y-4 bg-slate-900/90 border border-slate-800" data-testid="risk-panel-loading">
+        <div className="w-12 h-12 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin mx-auto" />
+        <div className="t-section text-cyan-400 font-mono">
+          RUNNING SAFETY &amp; ML RISK EVALUATION…
         </div>
       </div>
     );
@@ -50,13 +49,17 @@ export const RiskAssessmentPanel: React.FC<RiskAssessmentPanelProps> = ({
 
   if (context.error) {
     return (
-      <div className="bg-slate-900 border border-red-900/60 rounded-xl p-6 text-center text-slate-300 space-y-3">
-        <AlertTriangle className="w-8 h-8 text-red-400 mx-auto" />
-        <div className="font-bold text-red-300">PREDICTION UNAVAILABLE</div>
-        <p className="text-xs text-slate-400">{context.error}</p>
+      <div
+        className="panel p-6 text-center space-y-3 bg-red-950/20 border border-red-500/50"
+        data-testid="risk-panel-error"
+      >
+        <AlertTriangle className="w-8 h-8 mx-auto text-red-400" />
+        <div className="font-mono font-bold text-red-400">PREDICTION UNAVAILABLE</div>
+        <p className="text-xs font-mono text-slate-300 wrap-safe">{context.error}</p>
         <button
+          type="button"
           onClick={onRefresh}
-          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-lg transition-colors font-mono"
+          className="tap px-3 py-1.5 rounded-md font-mono text-xs font-bold mx-auto bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800"
         >
           Retry Assessment
         </button>
@@ -64,538 +67,383 @@ export const RiskAssessmentPanel: React.FC<RiskAssessmentPanelProps> = ({
     );
   }
 
-  const isStale = (context.freshness_state as string) === 'STALE' || (context.freshness_state as string) === 'HISTORICAL' || (context.data_quality as string) === 'STALE' || (context.telemetry_age_minutes !== null && context.telemetry_age_minutes !== undefined && context.telemetry_age_minutes > 360);
-  const isInsufficient = (context.freshness_state as string) === 'INSUFFICIENT' || (context.data_quality as string) === 'INSUFFICIENT' || (context.data_quality as string) === 'INSUFFICIENT_DATA' || !context.prediction;
+  // Single authoritative risk display state adapter
+  const displayState = resolveRiskDisplayState(context);
+
+  const isStale = displayState.kind === 'STALE';
+  const isDegraded = !isStale && (context.freshness_state as string) === 'DEGRADED';
+  const isResearchDomain = displayState.isResearchDomain;
 
   const rawObsTs = context.telemetry_timestamp || context.last_observation_timestamp || '2026-08-20T08:00:00Z';
   const formattedObsUtc = rawObsTs.replace('T', ' ').replace(':00Z', ' UTC').replace('Z', ' UTC');
 
-  const prediction = context.prediction || {
-    final_risk_level: isStale ? 'STALE' : 'INSUFFICIENT_DATA',
-    model_risk_level: isStale ? 'STALE' : 'INSUFFICIENT_DATA',
-    final_risk_score: null,
-    model_risk_score: null,
-    calibrated_probability: null,
-    raw_probability: null,
-    risk_escalated: false,
-    risk_escalation_reasons: [],
-    rule_evaluations: [],
-    model_version: 'colorado_avalanche_rf_v3',
-  };
-
-  const finalLevel = isStale ? 'STALE' : (prediction.final_risk_level || 'INSUFFICIENT_DATA');
-  const modelLevel = isStale ? 'STALE' : (prediction.model_risk_level || 'INSUFFICIENT_DATA');
-  const quality = isStale ? 'STALE' : (context.data_quality || 'INSUFFICIENT');
-  const isEscalated = !isStale && !isInsufficient && prediction.risk_escalated;
-
-  const getBadgeStyle = (level: string) => {
-    switch (level) {
-      case 'HIGH':
-        return 'bg-red-950/80 border-red-500 text-red-100 animate-pulse';
-      case 'MEDIUM':
-        return 'bg-amber-950/80 border-amber-500 text-amber-100';
-      case 'LOW':
-        return 'bg-emerald-950/80 border-emerald-500 text-emerald-100';
-      case 'STALE':
-        return 'bg-slate-900 border-red-500/80 text-slate-200';
-      case 'INSUFFICIENT_DATA':
-      default:
-        return 'bg-slate-800 border-slate-700 text-slate-300';
-    }
-  };
-
-  const getQualityBadge = (q: string) => {
-    switch (q) {
-      case 'GOOD':
-      case 'LIVE':
-        return 'bg-emerald-950/60 border-emerald-700 text-emerald-300';
-      case 'DEGRADED':
-        return 'bg-amber-950/60 border-amber-700 text-amber-300';
-      case 'STALE':
-        return 'bg-red-950/60 border-red-700 text-red-300 font-bold';
-      case 'INSUFFICIENT':
-      case 'INSUFFICIENT_DATA':
-      default:
-        return 'bg-slate-800 border-slate-700 text-slate-400 font-bold';
-    }
-  };
-
+  const quality = isStale ? 'STALE' : (context.data_quality || 'GOOD');
   const formattedAge = formatTelemetryAge(context.telemetry_age_minutes);
 
+  const qualityTone =
+    quality === 'GOOD' ? 'live' : quality === 'DEGRADED' ? 'warn' : quality === 'STALE' ? 'critical' : 'neutral';
+
+  const MISSING = 'MISSING / SENSOR NOT MONITORED';
+  const val = (v: number | null | undefined, fmt: (n: number) => string) =>
+    v === null || v === undefined ? MISSING : fmt(v);
+
+  const telemetryRows = [
+    { label: 'Air Temp (TOBS)', value: val(context.temperature, (n) => `${n.toFixed(1)} °C`), missing: context.temperature === null || context.temperature === undefined },
+    { label: 'Snow Depth (SNWD)', value: val(context.snow_depth, (n) => `${n.toFixed(0)} cm`), missing: context.snow_depth === null || context.snow_depth === undefined },
+    { label: 'SWE (WTEQ)', value: val(context.snow_water_equivalent, (n) => `${n.toFixed(0)} mm`), missing: context.snow_water_equivalent === null || context.snow_water_equivalent === undefined },
+    { label: 'Precip (PREC)', value: val(context.precipitation, (n) => `${n.toFixed(1)} mm`), missing: context.precipitation === null || context.precipitation === undefined },
+    { label: 'Wind (WSPDV)', value: val(context.wind_speed_mean_24h, (n) => `${n.toFixed(0)} km/h (24h mean)`), missing: context.wind_speed_mean_24h === null || context.wind_speed_mean_24h === undefined },
+  ];
+
+  const varStatus = isStale ? 'STALE' : isDegraded ? 'AGED' : 'GOOD';
+  const varTone = isStale ? 'critical' : isDegraded ? 'warn' : 'live';
+
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 sm:p-4 space-y-3 shadow-xl text-slate-100 font-sans min-w-0">
-      {/* 1. Target Header */}
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2.5 gap-2 min-w-0">
-        <div className="min-w-0 flex-1">
-          <span className="text-[10px] font-mono tracking-wider text-cyan-400 font-semibold uppercase block truncate">
-            TARGET EVALUATION: {context.target_type}
-          </span>
-          <h2 className="text-sm sm:text-base font-bold text-white leading-tight break-words">{context.target_name}</h2>
-          <div className="text-[11px] text-slate-400 font-mono truncate">
-            {context.latitude.toFixed(4)}°N, {Math.abs(context.longitude).toFixed(4)}°W • Elev: {context.elevation.toLocaleString()}m • Slope: {context.slope}°
+    <div className="space-y-3 min-w-0" data-testid="risk-assessment-panel">
+      {/* ================= 1. TARGET EVALUATION HEADER ================= */}
+      <div className="panel p-3.5 bg-slate-900/95 border border-slate-800 rounded-xl space-y-2">
+        <div className="flex flex-wrap items-start justify-between gap-2 min-w-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-cyan-400 uppercase tracking-wider">
+              <Target className="w-3.5 h-3.5 shrink-0" />
+              <span>TARGET EVALUATION</span>
+            </div>
+
+            <h2 className="text-lg font-bold text-slate-100 tracking-tight wrap-safe mt-0.5">
+              {context.target_name}
+            </h2>
+
+            <div className="text-xs font-mono text-slate-400 wrap-safe mt-0.5">
+              {context.latitude?.toFixed(4)}° N, {Math.abs(context.longitude ?? 0).toFixed(4)}° {context.longitude >= 0 ? 'E' : 'W'}
+              {' • '}Elevation: {context.elevation?.toLocaleString()} m
+              {context.slope !== null && <> • Slope: {context.slope}°</>}
+              {context.telemetry_source === 'CUSTOM CSV DATASET' && <> • Source: Custom CSV Dataset</>}
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {onSync && (
-            <button
-              onClick={() => onSync()}
-              disabled={isSyncing}
-              className="bg-cyan-950 hover:bg-cyan-900 border border-cyan-700 text-cyan-300 text-xs px-2.5 py-1 rounded-lg transition-colors font-mono disabled:opacity-50 flex items-center gap-1"
-            >
-              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Syncing...' : 'SYNC NOW'}</span>
-            </button>
-          )}
+
           <button
+            type="button"
             onClick={onRefresh}
-            className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs px-2.5 py-1 rounded-lg transition-colors font-mono shrink-0"
+            className="tap gap-1.5 px-2.5 py-1 rounded-md font-mono text-xs font-bold shrink-0 bg-slate-950 border border-slate-700 text-slate-300 hover:text-cyan-400 hover:border-cyan-500/50 transition-colors"
+            aria-label="Re-evaluate risk for this location"
           >
-            Re-evaluate
+            <RefreshCw className="w-3 h-3" aria-hidden="true" />
+            <span>Re-evaluate</span>
           </button>
         </div>
+
+        {/* Telemetry Stream Badge */}
+        {isResearchDomain ? (
+          <div
+            className="rounded-lg px-2.5 py-1.5 flex flex-wrap items-center justify-between gap-2 font-mono text-xs bg-cyan-950/30 border border-cyan-500/40 text-cyan-300 motion-fade"
+            data-testid="telemetry-research-banner"
+          >
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <Database className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
+              <span className="font-bold">DATA DOMAIN: HIMALAYAS • SOURCE: CSV DATASET</span>
+              <span className="text-slate-400">• MODEL STATUS: <strong className="text-amber-300">{displayState.modelStatusText}</strong></span>
+              <span className="text-slate-400 hidden sm:inline">• INFERENCE: <strong className="text-slate-200">{displayState.inferenceStatusText}</strong></span>
+            </div>
+            <StatusPill tone="neutral" label="RESEARCH" glyph="◉" />
+          </div>
+        ) : isStale ? (
+          <div
+            className="rounded-lg p-2.5 bg-red-950/30 border border-red-500/50 text-xs font-mono space-y-1 motion-fade"
+            role="alert"
+            data-testid="telemetry-stale-banner"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-red-400 font-bold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>TELEMETRY STALE — STALE DATA PROTECTION ACTIVE</span>
+              </div>
+              <StatusPill tone="critical" label="STALE" glyph="⚠" testId="data-quality-badge" />
+            </div>
+
+            <div className="text-slate-300">
+              NRCS AWDB • Last observation {formattedAge} ago
+            </div>
+
+            <div className="text-red-300 font-semibold">
+              LIVE PREDICTION SUPPRESSED · Status: <strong>STALE / NOT CURRENT</strong>
+            </div>
+
+            <div className="text-slate-400">
+              Reason: Latest NRCS AWDB observation exceeds the 6-hour freshness limit.
+            </div>
+
+            <div className="text-slate-400">
+              Last observation: {formattedObsUtc}
+            </div>
+
+            {onSync && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => onSync()}
+                  disabled={isSyncing}
+                  className="tap gap-1.5 px-2.5 py-1 rounded font-bold bg-red-950 border border-red-500 text-red-300 hover:bg-red-900"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'SYNCING…' : 'SYNC NOW'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            className={`rounded-lg px-2.5 py-1.5 flex flex-wrap items-center justify-between gap-2 font-mono text-xs ${
+              isDegraded
+                ? 'bg-amber-950/20 border border-amber-500/40 text-amber-300'
+                : 'bg-emerald-950/20 border border-emerald-500/40 text-emerald-300'
+            }`}
+            data-testid="telemetry-live-banner"
+          >
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <Radio className={`w-3.5 h-3.5 shrink-0 ${isDegraded ? 'text-amber-400' : 'text-emerald-400 animate-pulse'}`} />
+              <span className="font-bold">
+                {isDegraded
+                  ? 'TELEMETRY: DEGRADED • SOURCE: NRCS AWDB'
+                  : 'TELEMETRY: LIVE • SOURCE: NRCS AWDB'}
+              </span>
+              <span className="text-slate-400">• AGE: {formattedAge}</span>
+              <span className="text-slate-400 hidden sm:inline">
+                Model gating: <strong className="text-slate-200">ACTIVE PREDICTION</strong>
+              </span>
+            </div>
+            <StatusPill tone={qualityTone as any} label={quality} glyph="◆" testId="data-quality-badge" />
+          </div>
+        )}
       </div>
 
-      {/* 2A. Live Telemetry Stream Banner (When fresh) */}
-      {!isStale && !isInsufficient && (
-        <div className="bg-emerald-950/80 border-2 border-emerald-500/80 p-2.5 sm:p-3 rounded-xl space-y-1 text-xs text-emerald-200 shadow-lg min-w-0">
-          <div className="flex items-center justify-between gap-2 font-bold text-emerald-100 text-xs sm:text-sm">
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 text-emerald-400 shrink-0 animate-pulse" />
-              <span>TELEMETRY: LIVE • SOURCE: NRCS AWDB</span>
+      {/* ================= 2. FINAL POLICY RISK (CIRCULAR GAUGE) ================= */}
+      <div
+        className="panel p-4 bg-slate-900/95 border border-slate-800 rounded-xl space-y-2.5 shadow-md"
+        data-testid="primary-risk-block"
+      >
+        <div className="t-section text-slate-400">FINAL POLICY RISK</div>
+
+        <CircularRiskGauge displayState={displayState} />
+
+        {/* Reason & Data Requirement Card (Rendered for Unavailable/Research/Insufficient States) */}
+        {!displayState.hasValidScore && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-mono pt-1" data-testid="unavailable-reason-card">
+            <div className="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800">
+              <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">MODEL STATUS</div>
+              <div className="font-bold text-amber-300 mt-0.5">{displayState.modelStatusText}</div>
             </div>
-            <span className="text-[10px] font-mono bg-emerald-900 border border-emerald-600 px-2 py-0.5 rounded text-emerald-200">
-              AGE: {formattedAge}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 font-mono text-[10px] text-emerald-300 pt-1 border-t border-emerald-900/60">
-            <div className="truncate">Observed UTC: <strong>{formattedObsUtc}</strong></div>
-            <div>Model Gating: <strong className="text-emerald-200">ACTIVE PREDICTION</strong></div>
-          </div>
-        </div>
-      )}
-
-      {/* 2B. Prominent Stale Data Banner */}
-      {isStale && (
-        <div className="bg-red-950/90 border-2 border-red-500/90 p-2.5 sm:p-3 rounded-xl space-y-1.5 text-xs text-red-200 shadow-lg min-w-0">
-          <div className="flex items-center gap-2 font-bold text-red-100 text-xs sm:text-sm">
-            <AlertOctagon className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 shrink-0" />
-            <span>LIVE PREDICTION SUPPRESSED</span>
-          </div>
-          <div className="pl-6 sm:pl-7 text-[11px] font-semibold text-red-200 leading-tight">
-            Reason: Latest NRCS AWDB observation exceeds the 6-hour freshness limit.
-          </div>
-          <div className="pl-6 sm:pl-7 text-[10px] font-mono font-bold tracking-wider text-red-300 uppercase">
-            STALE TELEMETRY — LIVE PREDICTION SUPPRESSED • HISTORICAL DATA — LIVE PREDICTION UNAVAILABLE
-          </div>
-          <p className="pl-6 sm:pl-7 text-[11px] text-red-200/90 leading-tight">
-            Latest observation: <strong>{formattedAge} old</strong> ({context.telemetry_age_minutes?.toLocaleString() || '452'} min, &gt;6h). Real-time assessment suppressed.
-          </p>
-          <div className="pl-6 sm:pl-7 grid grid-cols-1 sm:grid-cols-2 gap-1 font-mono text-[10px] text-red-300 pt-1 border-t border-red-900/60">
-            <div className="truncate">Observation: <strong>{formattedObsUtc}</strong></div>
-            <div>Status: <strong>STALE / NOT CURRENT</strong></div>
-          </div>
-        </div>
-      )}
-
-      {/* 2C. Expandable Live Telemetry Details Breakdown */}
-      <div className="border border-slate-800 rounded-lg overflow-hidden bg-slate-950/60">
-        <button
-          onClick={() => setShowTelemetryDetails(!showTelemetryDetails)}
-          className="w-full p-2.5 flex items-center justify-between text-xs font-mono font-bold text-slate-300 hover:bg-slate-800/50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Database className="w-3.5 h-3.5 text-cyan-400" />
-            <span>LIVE TELEMETRY DETAILS (USDA NRCS AWDB)</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded border font-semibold ${isStale ? 'bg-red-950 text-red-300 border-red-800' : 'bg-emerald-950 text-emerald-300 border-emerald-800'}`}>
-              {context.freshness_state}
-            </span>
-          </div>
-          {showTelemetryDetails ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-        </button>
-
-        {showTelemetryDetails && (
-          <div className="p-2.5 pt-0 space-y-2 text-xs border-t border-slate-800/80">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-2 font-mono">
-              {/* Air Temperature */}
-              <div className="bg-slate-900/90 border border-slate-800 p-2 rounded">
-                <div className="flex items-center justify-between text-slate-400 text-[10px]">
-                  <span className="flex items-center gap-1"><Thermometer className="w-3 h-3 text-cyan-400" /> Air Temp (TOBS)</span>
-                  <span className="text-slate-500">°C</span>
-                </div>
-                <div className="text-sm font-bold text-white mt-1">
-                  {context.temperature !== null && context.temperature !== undefined ? `${context.temperature} °C` : <span className="text-slate-500 font-normal">MISSING</span>}
-                </div>
-                <div className="text-[9px] text-slate-500 mt-0.5 truncate">Source: NRCS AWDB • {isStale ? 'STALE' : 'LIVE'}</div>
-              </div>
-
-              {/* Snow Depth */}
-              <div className="bg-slate-900/90 border border-slate-800 p-2 rounded">
-                <div className="flex items-center justify-between text-slate-400 text-[10px]">
-                  <span className="flex items-center gap-1"><Snowflake className="w-3 h-3 text-cyan-400" /> Snow Depth (SNWD)</span>
-                  <span className="text-slate-500">cm</span>
-                </div>
-                <div className="text-sm font-bold text-white mt-1">
-                  {context.snow_depth !== null && context.snow_depth !== undefined ? `${context.snow_depth} cm` : <span className="text-slate-500 font-normal">MISSING</span>}
-                </div>
-                <div className="text-[9px] text-slate-500 mt-0.5 truncate">Source: NRCS AWDB • {isStale ? 'STALE' : 'LIVE'}</div>
-              </div>
-
-              {/* SWE */}
-              <div className="bg-slate-900/90 border border-slate-800 p-2 rounded">
-                <div className="flex items-center justify-between text-slate-400 text-[10px]">
-                  <span className="flex items-center gap-1"><Droplets className="w-3 h-3 text-cyan-400" /> SWE (WTEQ)</span>
-                  <span className="text-slate-500">mm</span>
-                </div>
-                <div className="text-sm font-bold text-white mt-1">
-                  {context.snow_water_equivalent !== null && context.snow_water_equivalent !== undefined ? `${context.snow_water_equivalent} mm` : <span className="text-slate-500 font-normal">MISSING</span>}
-                </div>
-                <div className="text-[9px] text-slate-500 mt-0.5 truncate">Source: NRCS AWDB • {isStale ? 'STALE' : 'LIVE'}</div>
-              </div>
-
-              {/* Precipitation */}
-              <div className="bg-slate-900/90 border border-slate-800 p-2 rounded">
-                <div className="flex items-center justify-between text-slate-400 text-[10px]">
-                  <span className="flex items-center gap-1"><Droplets className="w-3 h-3 text-cyan-400" /> Precip (PREC)</span>
-                  <span className="text-slate-500">mm</span>
-                </div>
-                <div className="text-sm font-bold text-white mt-1">
-                  {context.precipitation !== null && context.precipitation !== undefined ? `${context.precipitation} mm` : <span className="text-slate-500 font-normal">0.0 mm</span>}
-                </div>
-                <div className="text-[9px] text-slate-500 mt-0.5 truncate">Source: NRCS AWDB • {isStale ? 'STALE' : 'LIVE'}</div>
-              </div>
-
-              {/* Wind Speed */}
-              <div className="bg-slate-900/90 border border-slate-800 p-2 rounded sm:col-span-2">
-                <div className="flex items-center justify-between text-slate-400 text-[10px]">
-                  <span className="flex items-center gap-1"><Wind className="w-3 h-3 text-cyan-400" /> Wind (WSPDV)</span>
-                  <span className="text-slate-500">km/h</span>
-                </div>
-                <div className="text-sm font-bold text-white mt-1">
-                  {context.wind_speed_mean_24h !== null && context.wind_speed_mean_24h !== undefined ? (
-                    `${context.wind_speed_mean_24h} km/h (24h mean) / ${context.wind_speed_max_24h || 'N/A'} km/h (max)`
-                  ) : (
-                    <span className="text-slate-500 font-normal italic">MISSING / SENSOR NOT MONITORED</span>
-                  )}
-                </div>
-                <div className="text-[9px] text-slate-500 mt-0.5 truncate">
-                  {context.wind_speed_mean_24h !== null ? 'Source: NRCS AWDB' : 'Station lacks active wind anemometer telemetry'}
-                </div>
-              </div>
+            <div className="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800">
+              <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">INFERENCE</div>
+              <div className="font-bold text-slate-200 mt-0.5">{displayState.inferenceStatusText}</div>
+            </div>
+            <div className="bg-slate-950/80 p-2.5 rounded-lg border border-slate-800">
+              <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">DATA REQUIREMENT</div>
+              <div className="font-bold text-slate-300 mt-0.5">{displayState.dataRequirementText}</div>
             </div>
           </div>
         )}
       </div>
 
-      {/* 3. SECTION: CURRENT ASSESSMENT */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-1">
-          <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-slate-300">
-            CURRENT ASSESSMENT
-          </span>
-          {isStale && (
-            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-800">
-              SUPPRESSED
-            </span>
-          )}
-        </div>
-
-        {/* Primary Final Policy Risk Level Card */}
-        <div className={`p-3 sm:p-3.5 rounded-xl border-2 shadow-lg flex flex-wrap items-center justify-between gap-3 min-w-0 ${getBadgeStyle(finalLevel)}`}>
-          <div className="space-y-0.5 min-w-0">
-            <div className="text-[10px] font-mono tracking-wider font-semibold uppercase opacity-90 flex items-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-              <span>FINAL POLICY RISK LEVEL</span>
-            </div>
-            <div className="text-xl sm:text-2xl font-black tracking-tight flex items-baseline gap-2">
-              <span>{finalLevel}</span>
-              {!isStale && !isInsufficient && prediction.final_risk_score !== null && (
-                <span className="text-sm font-mono font-normal opacity-80">
-                  ({prediction.final_risk_score}/100)
-                </span>
-              )}
-              {isStale && (
-                <span className="text-xs sm:text-sm font-mono font-normal opacity-80 text-red-300">
-                  (SUPPRESSED)
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="text-right font-mono text-xs space-y-0.5 shrink-0">
-            <div className="opacity-80 text-[10px]">Data Quality:</div>
-            <div className={`px-2 py-0.5 rounded border text-[11px] font-bold inline-block ${getQualityBadge(quality)}`}>
-              {quality}
-            </div>
-          </div>
-        </div>
+      {/* ================= 3. MODEL → POLICY DECISION ================= */}
+      <div className="panel p-4 bg-slate-900/95 border border-slate-800 rounded-xl">
+        <ModelPolicyComparison displayState={displayState} />
       </div>
 
-      {/* 4. SECTION: HISTORICAL DIAGNOSTICS */}
-      <div className="space-y-2 pt-1">
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-1">
-          <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-slate-400">
-            HISTORICAL DIAGNOSTICS
-          </span>
-          <span className="text-[9px] font-mono text-slate-500">
-            Non-Operational Reference
-          </span>
-        </div>
-
-        {/* Model vs Policy Separation Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5 min-w-0">
-          {/* ML Statistical Model Output */}
-          <div className="bg-slate-950/80 border border-slate-800 p-2.5 rounded-lg space-y-1.5 min-w-0">
-            <div className="flex items-center gap-1.5 text-cyan-400 font-mono text-[11px] font-bold border-b border-slate-800 pb-1">
-              <Cpu className="w-3.5 h-3.5 shrink-0" />
-              <span>ML STATISTICAL MODEL</span>
-            </div>
-
-            {isStale ? (
-              <div className="space-y-1 text-xs text-slate-300">
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400 text-[11px]">Status:</span>
-                  <span className="font-bold text-red-400 font-mono text-[11px]">SUPPRESSED</span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400 text-[11px]">Reason:</span>
-                  <span className="text-slate-300 text-[10px]">Telemetry is stale (&gt;6h)</span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400 text-[11px]">Current Prediction:</span>
-                  <span className="font-mono font-bold text-slate-400 text-[11px]">UNAVAILABLE</span>
-                </div>
-                <div className="mt-1.5 pt-1.5 border-t border-slate-800/80 text-[10px] text-slate-400 font-mono space-y-0.5">
-                  <div className="text-slate-500 uppercase font-bold text-[9px]">
-                    Historical Model Output — Diagnostic Only
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Model Level:</span>
-                    <span className="text-slate-300 font-semibold">{modelLevel}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Calibrated Prob:</span>
-                    <span className="text-slate-300 font-semibold">
-                      {prediction.calibrated_probability !== null ? `${(prediction.calibrated_probability * 100).toFixed(1)}%` : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="text-[9px] text-amber-400/90 font-bold uppercase pt-0.5">
-                    [NOT CURRENT]
-                  </div>
-                </div>
-              </div>
-            ) : isInsufficient ? (
-              <div className="space-y-1 text-xs text-slate-400">
-                <div className="flex justify-between items-center gap-2">
-                  <span>Status:</span>
-                  <span className="font-bold text-amber-400">UNAVAILABLE</span>
-                </div>
-                <p className="text-[11px]">Insufficient telemetry to evaluate ML model.</p>
-              </div>
-            ) : (
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400">Model Level:</span>
-                  <span className="font-bold text-slate-100">{modelLevel}</span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400">Calibrated Prob:</span>
-                  <span className="font-mono font-bold text-cyan-300">
-                    {prediction.calibrated_probability !== null ? `${(prediction.calibrated_probability * 100).toFixed(1)}%` : 'N/A'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400">Model Score:</span>
-                  <span className="font-mono text-slate-300">
-                    {prediction.model_risk_score !== null ? `${prediction.model_risk_score}/100` : 'N/A'}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Safety Policy Engine Output */}
-          <div className="bg-slate-950/80 border border-slate-800 p-2.5 rounded-lg space-y-1.5 min-w-0">
-            <div className="flex items-center gap-1.5 text-amber-400 font-mono text-[11px] font-bold border-b border-slate-800 pb-1">
-              <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-              <span>SAFETY RISK POLICY</span>
-            </div>
-
-            {isStale ? (
-              <div className="space-y-1 text-xs text-slate-300">
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400 text-[11px]">Policy Evaluation:</span>
-                  <span className="font-bold text-red-400 font-mono text-[11px]">SUPPRESSED</span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400 text-[11px]">Reason:</span>
-                  <span className="text-slate-300 text-[10px]">STALE TELEMETRY (&gt;6h)</span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400 text-[11px]">Final Policy Level:</span>
-                  <span className="font-mono font-bold text-red-400 text-[11px]">STALE</span>
-                </div>
-                <div className="mt-1.5 pt-1.5 border-t border-slate-800/80 text-[9px] text-slate-400 font-mono leading-tight">
-                  Deterministic safety policies cannot override without current live observations.
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400">Final Policy Level:</span>
-                  <span className="font-bold text-slate-100">{finalLevel}</span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400">Final Risk Score:</span>
-                  <span className="font-mono font-bold text-amber-300">
-                    {prediction.final_risk_score !== null ? `${prediction.final_risk_score}/100` : 'N/A'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-400">Policy Escalated:</span>
-                  <span className={`font-bold ${isEscalated ? 'text-amber-400' : 'text-slate-400'}`}>
-                    {isEscalated ? 'YES' : 'NO'}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 5. Collapsible Historical Rule Evaluation Section */}
-        <div className="bg-slate-950 border border-slate-800 rounded-lg text-xs min-w-0 overflow-hidden">
-          <button
-            onClick={() => setShowHistoricalRules(!showHistoricalRules)}
-            className="w-full p-2.5 flex items-center justify-between text-[11px] font-mono font-bold text-slate-300 hover:bg-slate-900/60 transition-colors text-left"
-          >
-            <div className="flex items-center gap-1.5">
-              <span>Historical Rule Evaluation — Diagnostic Only</span>
-              <span className="text-[10px] text-slate-500 font-normal">
-                ({context.rules_evaluation?.length || 0} rules)
-              </span>
-            </div>
-            <div className="flex items-center gap-1 text-[10px] text-cyan-400 font-normal">
-              <span>{showHistoricalRules ? 'Hide rules' : 'View historical rules'}</span>
-              {showHistoricalRules ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </div>
-          </button>
-
-          {showHistoricalRules && (
-            <div className="p-2.5 pt-0 space-y-2 border-t border-slate-800/80">
-              {isStale && (
-                <div className="text-[10px] text-amber-300/90 bg-amber-950/40 border border-amber-900/60 p-2 rounded mt-2">
-                  <strong>Diagnostic Reference:</strong> Rules below reflect historical sensor values from observation timestamp <code>{context.telemetry_timestamp || context.last_observation_timestamp || 'N/A'}</code> and are not valid current forecasts.
-                </div>
-              )}
-
-              <div className="space-y-1.5 font-mono text-[11px] max-h-56 overflow-y-auto pr-1">
-                {context.rules_evaluation && context.rules_evaluation.length > 0 ? (
-                  context.rules_evaluation.map((rule: any) => {
-                    const isTriggered = rule.status === 'TRIGGERED' || rule.triggered === true;
-                    return (
-                      <div
-                        key={rule.rule_id}
-                        className={`p-2 rounded border transition-colors ${
-                          isTriggered
-                            ? 'bg-amber-950/40 border-amber-800/80 text-amber-200'
-                            : 'bg-slate-900 border-slate-800 text-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5 font-semibold">
-                            {isTriggered ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                            ) : (
-                              <XCircle className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            )}
-                            <span className="truncate">{rule.rule_name}</span>
-                          </div>
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                              isTriggered ? 'bg-amber-900/80 text-amber-200' : 'bg-slate-800 text-slate-400'
-                            }`}
-                          >
-                            {rule.status || (isTriggered ? 'TRIGGERED' : 'CLEAR')}
-                          </span>
-                        </div>
-                        <div className="mt-1 text-[10px] text-slate-400 pl-5 space-y-0.5">
-                          <div>Condition: <span className="text-slate-300">{rule.description || rule.rationale}</span></div>
-                          {rule.actual_values && (
-                            <div className="flex flex-wrap gap-2.5 text-slate-400">
-                              {Object.entries(rule.actual_values).map(([k, v]: [string, any]) => (
-                                <span key={k}>
-                                  {k}: <strong className={isTriggered ? 'text-amber-300' : 'text-slate-200'}>{String(v)}</strong> ({rule.thresholds?.[k] || ''})
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-slate-500 text-[10px] italic p-2">
-                    No deterministic override rules evaluated.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+      {/* ================= 4. POLICY ESCALATION REASONS ================= */}
+      <div className="panel p-4 bg-slate-900/95 border border-slate-800 rounded-xl">
+        <PolicyEscalationReasons
+          context={context}
+          displayState={displayState}
+        />
       </div>
 
-      {/* 6. Policy Escalation Banner (When active, non-stale) */}
-      {isEscalated && (
-        <div className="bg-amber-950/70 border border-amber-600/80 p-2.5 rounded-lg space-y-1.5 shadow-inner min-w-0">
-          <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
-            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="break-words">POLICY ESCALATION: MODEL RISK ({modelLevel}) OVERRIDDEN TO {finalLevel}</span>
-          </div>
-          <div className="text-xs text-amber-200/90 pl-6 space-y-1">
-            <p className="font-semibold text-amber-100">Why was the risk escalated?</p>
-            <ul className="list-disc pl-4 space-y-0.5 text-[11px] break-words">
-              {prediction.risk_escalation_reasons.map((reason: string, idx: number) => (
-                <li key={idx}>{reason}</li>
-              ))}
-            </ul>
-          </div>
+      {/* ================= 5. ESCALATION OVERRIDE BANNER (IF ACTIVE) ================= */}
+      {displayState.kind === 'AVAILABLE' && displayState.isEscalated && (
+        <div
+          className="rounded-lg p-3 bg-amber-950/25 border border-amber-500/50 flex items-start gap-2 motion-fade"
+          data-testid="policy-escalation-banner"
+        >
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <span className="font-mono font-bold text-xs text-amber-300 wrap-safe">
+            POLICY ESCALATION: MODEL RISK ({displayState.modelLevel}) OVERRIDDEN TO {displayState.level}
+          </span>
         </div>
       )}
 
-      {/* 7. DATA SOURCE & PROVENANCE (Requirement 9) */}
-      <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-[10px] font-mono text-slate-300 space-y-1 min-w-0">
-        <div className="text-[10px] font-bold tracking-wider uppercase text-cyan-400 border-b border-slate-800 pb-0.5 flex items-center gap-1.5">
-          <Database className="w-3 h-3 text-cyan-400" />
-          <span>DATA SOURCE & PROVENANCE</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 pt-0.5">
-          <div className="flex justify-between">
-            <span className="text-slate-500">Provider:</span>
-            <span className="text-slate-200 font-bold">USDA NRCS AWDB</span>
+      {/* ================= 6. LIVE TELEMETRY DETAILS DRAWER ================= */}
+      <div className="panel p-3 bg-slate-900/90 border border-slate-800 rounded-xl">
+        <button
+          type="button"
+          onClick={() => setShowTelemetryDetails((v) => !v)}
+          aria-expanded={showTelemetryDetails}
+          className="tap w-full flex items-center justify-between gap-2 text-left"
+        >
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Activity className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span className="t-section text-slate-200 truncate-safe">
+              LIVE TELEMETRY DETAILS (USDA NRCS AWDB)
+            </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Network:</span>
-            <span className="text-slate-200 font-bold">SNTL</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <StatusPill tone={qualityTone as any} label={quality} glyph="●" />
+            {showTelemetryDetails ? (
+              <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Last Sync:</span>
-            <span className="text-slate-200 truncate">{context.current_utc}</span>
+        </button>
+
+        {showTelemetryDetails && (
+          <div className="mt-2.5 motion-fade space-y-2">
+            <DataTable
+              columns={['Variable', 'Value', 'Age', 'Status']}
+              caption="Live telemetry variables with observation age and status"
+              testId="telemetry-table"
+            >
+              {telemetryRows.map((r) => (
+                <DataRow
+                  key={r.label}
+                  cells={[
+                    r.label,
+                    r.missing ? (
+                      <span key="v" className="text-slate-500 italic text-[11px]">{r.value}</span>
+                    ) : (
+                      r.value
+                    ),
+                    r.missing ? '—' : formattedAge,
+                    <StatusPill
+                      key="s"
+                      tone={r.missing ? 'neutral' : (varTone as any)}
+                      label={r.missing ? 'NO SENSOR' : varStatus}
+                      glyph={r.missing ? '○' : '●'}
+                    />,
+                  ]}
+                />
+              ))}
+            </DataTable>
+            <div className="text-[10px] font-mono text-slate-500 pt-1 border-t border-slate-800">
+              Source: USDA NRCS AWDB • SNOTEL Network
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Latest Observation:</span>
-            <span className="text-slate-200 truncate">{formattedObsUtc}</span>
+        )}
+      </div>
+
+      {/* ================= 7. HISTORICAL RULE EVALUATION DRAWER ================= */}
+      <div className="panel p-3 bg-slate-900/90 border border-slate-800 rounded-xl">
+        <button
+          type="button"
+          onClick={() => setShowHistoricalRules((v) => !v)}
+          aria-expanded={showHistoricalRules}
+          className="tap w-full flex items-center justify-between gap-2 text-left"
+        >
+          <span className="flex items-center gap-1.5 min-w-0">
+            {showHistoricalRules ? <ChevronUp className="w-3.5 h-3.5 text-cyan-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+            <span className="t-section text-slate-300 truncate-safe">
+              Historical Rule Evaluation — Diagnostic Only
+            </span>
+          </span>
+          <span className="text-[10px] font-mono text-slate-400 shrink-0">
+            ({context.rules_evaluation?.length || 0} rules)
+          </span>
+        </button>
+
+        {showHistoricalRules && (
+          <div className="mt-2.5 space-y-1.5 motion-fade max-h-56 overflow-y-auto pr-1">
+            {isStale && (
+              <div className="p-2 rounded bg-amber-950/20 border border-amber-500/30 text-[11px] font-mono text-amber-300">
+                <strong>Diagnostic Reference:</strong> Rules reflect historical sensor data from <code>{context.telemetry_timestamp || context.last_observation_timestamp}</code>.
+              </div>
+            )}
+
+            {context.rules_evaluation && context.rules_evaluation.length > 0 ? (
+              context.rules_evaluation.map((rule: any) => {
+                const isTriggered = rule.status === 'TRIGGERED' || rule.triggered === true;
+                return (
+                  <div
+                    key={rule.rule_id}
+                    className={`panel-inset p-2 rounded border ${
+                      isTriggered ? 'border-amber-500/40 bg-amber-950/10' : 'border-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 min-w-0 text-xs font-mono">
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        {isTriggered ? (
+                          <CheckCircle2 className="w-3 h-3 text-amber-400 shrink-0" />
+                        ) : (
+                          <XCircle className="w-3 h-3 text-slate-600 shrink-0" />
+                        )}
+                        <span className="truncate-safe text-slate-200 font-semibold">{rule.rule_name}</span>
+                      </span>
+                      <StatusPill
+                        tone={isTriggered ? 'warn' : 'neutral'}
+                        label={rule.status || (isTriggered ? 'TRIGGERED' : 'CLEAR')}
+                        glyph={isTriggered ? '▲' : '○'}
+                      />
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-400 pl-4 mt-0.5">
+                      {rule.description || rule.rationale}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-[11px] font-mono text-slate-500 italic p-1">
+                No deterministic override rules evaluated.
+              </div>
+            )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Freshness:</span>
-            <span className={`font-bold ${isStale ? 'text-red-400' : 'text-emerald-400'}`}>{context.freshness_state} ({formattedAge} old)</span>
+        )}
+      </div>
+
+      {/* ================= 8. PROVENANCE SUMMARY BLOCK ================= */}
+      <div className="panel p-3 bg-slate-900/90 border border-slate-800 rounded-xl" data-testid="provenance-block">
+        <button
+          type="button"
+          onClick={() => setShowProvenanceDetails((v) => !v)}
+          className="tap w-full flex items-center justify-between gap-2 text-left"
+        >
+          <div className="flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span className="t-section text-slate-300">DATA SOURCE &amp; PROVENANCE</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-500">Model Gate:</span>
-            <span className={`font-bold ${isStale ? 'text-amber-400' : 'text-emerald-400'}`}>{isStale ? 'SUPPRESSED (Gated)' : 'ACTIVE INFERENCE'}</span>
+          {showProvenanceDetails ? <ChevronUp className="w-3.5 h-3.5 text-cyan-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+        </button>
+
+        {showProvenanceDetails && (
+          <div className="mt-2 pt-2 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-mono text-slate-300 motion-fade">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Provider:</span>
+              <span className="text-slate-200 font-semibold">USDA NRCS AWDB</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Network:</span>
+              <span className="text-slate-200 font-semibold">SNTL</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Last Sync:</span>
+              <span className="text-slate-200">{context.current_utc}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Latest Obs:</span>
+              <span className="text-slate-200">{formattedObsUtc}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Freshness:</span>
+              <span className="text-slate-200">{context.freshness_state} ({formattedAge})</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Model Gate:</span>
+              <span className={isStale ? 'text-red-400 font-semibold' : 'text-emerald-400 font-semibold'}>
+                {isStale ? 'GATED (HOLD)' : 'ACTIVE INFERENCE'}
+              </span>
+            </div>
+            <div className="col-span-full pt-1 text-[10px] text-slate-400 flex justify-between border-t border-slate-800/50 mt-1">
+              <span>Terrain: {context.terrain_source || 'Copernicus 30m DEM'}</span>
+              <span>Model: {context.prediction?.model_version || (isResearchDomain ? 'research_evaluation_only' : 'colorado_avalanche_rf_v3')}</span>
+            </div>
           </div>
-        </div>
-        <div className="border-t border-slate-900 pt-0.5 flex justify-between items-center text-[9px] text-slate-500">
-          <span>Terrain: {context.terrain_source}</span>
-          <span>Model: {prediction.model_version || 'colorado_avalanche_rf_v3'}</span>
-        </div>
+        )}
       </div>
     </div>
   );

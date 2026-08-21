@@ -1,9 +1,7 @@
-"""Model Metadata, GIS Forecast Zones, Stations, Historical Observations, and Scientific Evaluation Route."""
-
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 import pandas as pd
 from api.dependencies import get_inference_engine
 from api.schemas import (
@@ -11,8 +9,11 @@ from api.schemas import (
     AvalancheZoneInfo,
     DomainStatusResponse,
     CrossDomainComparisonResponse,
+    HimalayaResearchPredictionRequest,
+    HimalayaResearchPredictionResponse,
 )
 from api.services.inference_service import AvalancheInferenceEngine
+from api.services.himalaya_service import himalaya_inference_engine
 from ml.model_registry import model_registry, Domain, GatingState
 
 router = APIRouter(prefix="/model", tags=["Model Metadata & GIS"])
@@ -107,6 +108,37 @@ def get_cross_domain_comparison():
     """Retrieve side-by-side scientific comparison and domain shift findings between Colorado and Himalaya."""
     comp = model_registry.get_cross_domain_comparison()
     return CrossDomainComparisonResponse(**comp)
+
+
+@router.post(
+    "/himalaya/research-predict",
+    response_model=HimalayaResearchPredictionResponse,
+    responses={
+        422: {"description": "Missing required terrain or coordinate parameters"},
+        500: {"description": "Internal model execution failure"},
+    }
+)
+def predict_himalayan_research_risk(
+    request: HimalayaResearchPredictionRequest,
+):
+    """Execute non-operational research inference using the calibrated Himalayan model artifact (N=44)."""
+    try:
+        return himalaya_inference_engine.predict_research(request)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc)
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc)
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while evaluating Himalayan research risk: {str(exc)}"
+        )
 
 
 @router.get("/metadata", response_model=ModelMetadataResponse)

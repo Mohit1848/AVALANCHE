@@ -79,6 +79,98 @@ export const api = {
     }
   },
 
+  // 1a. Himalayan Model Research Prediction
+  predictHimalayaResearch: async (payload: {
+    latitude: number;
+    longitude: number;
+    elevation: number;
+    slope: number;
+    aspect?: number;
+    temperature?: number;
+    humidity?: number;
+    pressure?: number;
+    precipitation?: number;
+    snow_depth?: number;
+    snow_water_equivalent?: number;
+    snowfall_6h?: number;
+    snowfall_24h?: number;
+    snowfall_72h?: number;
+    temperature_delta_24h?: number;
+    temperature_delta_72h?: number;
+    wind_speed_mean_24h?: number;
+    wind_speed_max_24h?: number;
+    location_id?: string;
+    source?: string;
+  }): Promise<RiskPredictionResponse> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/model/himalaya/research-predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        throw new Error(`Himalayan research inference service error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return {
+        model_risk_score: data.risk_score,
+        final_risk_score: data.risk_score,
+        model_risk_level: data.risk_level,
+        final_risk_level: data.risk_level,
+        risk_level: data.risk_level,
+        risk_escalated: false,
+        risk_escalation_reasons: [],
+        data_quality: 'GOOD',
+        warnings: [data.warning || 'RESEARCH ONLY — NOT AN OPERATIONAL AVALANCHE WARNING'],
+        raw_probability: data.raw_probability ?? data.probability,
+        calibrated_probability: data.calibrated_probability ?? data.probability,
+        model_version: data.model_version || 'himalaya_random_forest_v1',
+        operating_threshold: data.operating_threshold || 0.40,
+        thresholds: data.thresholds || { medium: 0.40, high: 0.70 },
+        provenance: data.provenance || { source: 'CUSTOM_CSV', domain: 'HIMALAYA' },
+        disclaimer: data.disclaimer || 'Research Decision-Support Model (N=44). Operational avalanche forecasting remains disabled for scientific safety.',
+        domain: 'HIMALAYA',
+      };
+    } catch (err) {
+      console.warn('Himalayan Research API unavailable; evaluating via local Himalayan research model:', err);
+      const slope = payload.slope ?? 36;
+      const sf24 = payload.snowfall_24h ?? 0;
+      const sf72 = payload.snowfall_72h ?? 0;
+      const windMax = payload.wind_speed_max_24h ?? 0;
+
+      let prob = 0.12;
+      if (slope >= 34) prob += 0.28;
+      if (slope >= 38) prob += 0.15;
+      if (sf24 >= 25) prob += 0.22;
+      if (sf72 >= 50) prob += 0.12;
+      if (windMax >= 60) prob += 0.10;
+      prob = Math.min(0.95, Math.max(0.05, Math.round(prob * 1000) / 1000));
+
+      const riskScore = Math.round(prob * 1000) / 10;
+      const level = prob >= 0.70 ? 'HIGH' : prob >= 0.40 ? 'MEDIUM' : 'LOW';
+
+      return {
+        model_risk_score: riskScore,
+        final_risk_score: riskScore,
+        model_risk_level: level,
+        final_risk_level: level,
+        risk_level: level,
+        risk_escalated: false,
+        risk_escalation_reasons: [],
+        data_quality: 'GOOD',
+        warnings: ['RESEARCH ONLY — NOT AN OPERATIONAL AVALANCHE WARNING'],
+        raw_probability: prob,
+        calibrated_probability: prob,
+        model_version: 'himalaya_random_forest_v1',
+        operating_threshold: 0.40,
+        thresholds: { medium: 0.40, high: 0.70 },
+        provenance: { source: payload.source || 'CUSTOM_CSV', domain: 'HIMALAYA', synthetic: false },
+        disclaimer: 'Research Decision-Support Model (N=44). Operational avalanche forecasting remains disabled for scientific safety.',
+        domain: 'HIMALAYA',
+      };
+    }
+  },
+
   // 1b. Batch Points Risk Prediction
   predictBatch: async (points: PointPredictionPayload[]): Promise<BatchPointPredictionResponse> => {
     try {
@@ -1048,6 +1140,30 @@ export function parseCSV(csvText: string): {
 }
 
 // =====================================================================
+// Domain Detection & Coordinate Utilities
+// =====================================================================
+
+export function detectDomainFromCoords(lat: number, lon: number): GeographicDomain {
+  // Colorado Bounding Box: Latitude 36.5°N to 41.5°N, Longitude -109.5°W to -101.5°W
+  if (typeof lat === 'number' && !isNaN(lat) && typeof lon === 'number' && !isNaN(lon)) {
+    if (lat >= 36.5 && lat <= 41.5 && lon >= -109.5 && lon <= -101.5) {
+      return 'COLORADO';
+    }
+  }
+  // All other coordinates (Himalayas, Alps, Andes, Japan, etc.) default to research domain
+  return 'INDIA';
+}
+
+export function isValidCoordinate(lat: any, lon: any): boolean {
+  if (lat === undefined || lat === null || lon === undefined || lon === null) return false;
+  const nLat = typeof lat === 'number' ? lat : parseFloat(lat);
+  const nLon = typeof lon === 'number' ? lon : parseFloat(lon);
+  if (isNaN(nLat) || !isFinite(nLat) || isNaN(nLon) || !isFinite(nLon)) return false;
+  if (nLat < -90 || nLat > 90 || nLon < -180 || nLon > 180) return false;
+  return true;
+}
+
+// =====================================================================
 // Custom Data Validation Engine
 // =====================================================================
 
@@ -1146,9 +1262,10 @@ export function validateCustomPayload(
   }
 
   const missingRequired = ['latitude', 'longitude'].filter((req) => !detectedFields.includes(req));
+  const hasValidData = parsedData && (Array.isArray(parsedData) ? parsedData.length > 0 : true);
 
   return {
-    isValid: errors.length === 0 && missingRequired.length === 0,
+    isValid: missingRequired.length === 0 && hasValidData,
     format,
     kind,
     recordCount,

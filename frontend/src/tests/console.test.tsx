@@ -113,8 +113,11 @@ describe('Phase 4 & 5: Mountain Risk Intelligence Console - Verification Suite',
       />
     );
 
-    expect(screen.getByText(/15\/100/i)).toBeDefined();
-    expect(screen.getByText('GOOD')).toBeDefined();
+    // Semantic selector: the hero score is intentionally split into
+    // value + '/100' spans for typographic hierarchy.
+    expect(screen.getByTestId('policy-risk-score').textContent).toMatch(/15\s*\/100/);
+    expect(screen.getByTestId('model-risk-score').textContent).toMatch(/15/);
+    expect(screen.getByTestId('data-quality-badge').textContent).toMatch(/GOOD/);
     expect(screen.queryByText(/STALE DATA PROTECTION ACTIVE/i)).toBeNull();
   });
 
@@ -216,7 +219,7 @@ describe('Phase 4 & 5: Mountain Risk Intelligence Console - Verification Suite',
     );
 
     expect(screen.getAllByText(/INSUFFICIENT_DATA/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('INSUFFICIENT')).toBeDefined();
+    expect(screen.getByTestId('data-quality-badge').textContent).toMatch(/INSUFFICIENT/);
   });
 
   it('5. Renders System Status Header with active pass count', () => {

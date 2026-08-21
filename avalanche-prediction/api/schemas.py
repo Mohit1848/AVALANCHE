@@ -309,3 +309,61 @@ class CrossDomainComparisonResponse(BaseModel):
     domains: Dict[str, DomainStatusResponse]
     metrics_table: List[Dict[str, Any]]
     domain_shift_experiment: Dict[str, Any]
+
+
+class HimalayaResearchPredictionRequest(BaseModel):
+    latitude: float = Field(..., ge=-90.0, le=90.0, description="Latitude in decimal degrees")
+    longitude: float = Field(..., ge=-180.0, le=180.0, description="Longitude in decimal degrees")
+    elevation: float = Field(..., ge=0.0, le=9000.0, description="Elevation in meters")
+    slope: float = Field(..., ge=0.0, le=90.0, description="Slope incline angle in degrees")
+    aspect: Optional[float] = Field(None, ge=0.0, le=360.0, description="Aspect in degrees (0-360, 0=North)")
+    temperature: Optional[float] = Field(None, ge=-80.0, le=60.0, description="Air temperature in °C")
+    humidity: Optional[float] = Field(None, ge=0.0, le=100.0, description="Relative humidity %")
+    pressure: Optional[float] = Field(None, ge=300.0, le=1100.0, description="Atmospheric pressure in hPa")
+    precipitation: Optional[float] = Field(None, ge=0.0, le=500.0, description="Liquid precipitation in mm")
+    snow_depth: Optional[float] = Field(None, ge=0.0, le=2000.0, description="Snow depth in cm")
+    snow_water_equivalent: Optional[float] = Field(None, ge=0.0, le=5000.0, description="SWE in mm")
+    snowfall_6h: Optional[float] = Field(0.0, ge=0.0, le=500.0, description="6h snowfall in mm")
+    snowfall_24h: Optional[float] = Field(None, ge=0.0, le=1000.0, description="24h snowfall in mm")
+    snowfall_72h: Optional[float] = Field(None, ge=0.0, le=2000.0, description="72h snowfall in mm")
+    temperature_delta_24h: Optional[float] = Field(0.0, ge=-50.0, le=50.0, description="24h temp delta in °C")
+    temperature_delta_72h: Optional[float] = Field(None, ge=-50.0, le=50.0, description="72h temp delta in °C")
+    wind_speed_mean_24h: Optional[float] = Field(None, ge=0.0, le=300.0, description="24h mean wind speed in km/h")
+    wind_speed_max_24h: Optional[float] = Field(None, ge=0.0, le=400.0, description="24h max wind speed in km/h")
+    location_id: Optional[str] = Field("HIMALAYAN_TARGET", description="Location name or identifier")
+    source: Optional[str] = Field("CUSTOM_CSV", description="Data source identifier")
+
+
+class HimalayaResearchPredictionResponse(BaseModel):
+    domain: str = Field("HIMALAYA", description="Geographic domain")
+    mode: str = Field("RESEARCH", description="Inference mode: 'RESEARCH' or 'OPERATIONAL'")
+    model_state: str = Field("CALIBRATED", description="Domain scientific gating state")
+    operational_enabled: bool = Field(False, description="True if certified for operational forecasting")
+    research_prediction_enabled: bool = Field(True, description="True if research-mode prediction is enabled")
+    risk_score: float = Field(..., description="Calibrated research risk score on 0-100 scale")
+    probability: float = Field(..., description="Calibrated probability of avalanche occurrence")
+    calibrated_probability: float = Field(..., description="Calibrated probability")
+    raw_probability: Optional[float] = Field(None, description="Uncalibrated probability")
+    risk_level: str = Field(..., description="Risk classification tier: 'LOW', 'MEDIUM', 'HIGH'")
+    model_risk_level: Optional[str] = Field(None, description="Model risk level")
+    final_risk_level: Optional[str] = Field(None, description="Final risk level")
+    model_version: str = Field(..., description="Trained Himalayan model artifact identifier")
+    source: str = Field("CUSTOM_CSV", description="Input dataset source")
+    location_id: str = Field(..., description="Location name or identifier")
+    latitude: float
+    longitude: float
+    elevation: float
+    slope: float
+    aspect: Optional[float] = None
+    warning: str = Field(
+        "RESEARCH ONLY — NOT AN OPERATIONAL AVALANCHE WARNING",
+        description="Mandatory scientific safety warning"
+    )
+    disclaimer: str = Field(
+        "This model is a research decision-support model and is not a certified avalanche warning system.",
+        description="Non-autonomous research disclaimer"
+    )
+    operating_threshold: float = Field(0.40, description="Medium risk threshold")
+    thresholds: Dict[str, float] = Field(default_factory=lambda: {"medium": 0.40, "high": 0.70})
+    provenance: Dict[str, Any] = Field(default_factory=dict)
+

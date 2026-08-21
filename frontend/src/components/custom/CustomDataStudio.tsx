@@ -27,6 +27,7 @@ import {
   validateCustomPayload,
   exportEvaluatedToCSV,
   downloadSampleCsvTemplate,
+  isValidCoordinate,
 } from '../../services/api';
 import type {
   CustomDataFormat,
@@ -40,6 +41,7 @@ import type {
 interface CustomDataStudioProps {
   activeCsvRecords?: EvaluatedPointRecord[];
   activeCsvFilename?: string;
+  appliedTargetId?: string | null;
   onSetActiveCsvDataset: (records: EvaluatedPointRecord[], filename: string) => void;
   onApplyLocationToConsole: (location: SelectedLocationState) => void;
   onNavigateToConsole: () => void;
@@ -48,6 +50,7 @@ interface CustomDataStudioProps {
 export const CustomDataStudio: React.FC<CustomDataStudioProps> = ({
   activeCsvRecords = [],
   activeCsvFilename = 'colorado_mountain_passes.csv',
+  appliedTargetId = null,
   onSetActiveCsvDataset,
   onApplyLocationToConsole,
   onNavigateToConsole,
@@ -253,8 +256,15 @@ export const CustomDataStudio: React.FC<CustomDataStudioProps> = ({
 
   // Apply Record to Console / Live Location State
   const handleApplyToConsole = (record: EvaluatedPointRecord) => {
+    if (!isValidCoordinate(record.latitude, record.longitude)) {
+      setAppliedNotification(`Cannot apply "${record.location_id}": Invalid coordinates`);
+      setTimeout(() => setAppliedNotification(null), 3500);
+      return;
+    }
+
     const locationState: SelectedLocationState = {
-      type: 'COORDINATE',
+      type: 'CSV_LOCATION',
+      id: record.id || record.location_id,
       name: record.location_id,
       latitude: record.latitude,
       longitude: record.longitude,
@@ -271,11 +281,11 @@ export const CustomDataStudio: React.FC<CustomDataStudioProps> = ({
       wind_speed_mean_24h: record.wind_speed_mean_24h ?? 20,
       wind_speed_max_24h: record.wind_speed_max_24h ?? 40,
       telemetry_age_minutes: 0,
+      source: 'CSV_DATASET',
     };
 
     onApplyLocationToConsole(locationState);
-    setAppliedNotification(`Loaded "${record.location_id}" from CSV into Risk Console & Map!`);
-    setTimeout(() => setAppliedNotification(null), 3000);
+    onNavigateToConsole();
   };
 
   // Export Results
@@ -774,9 +784,18 @@ export const CustomDataStudio: React.FC<CustomDataStudioProps> = ({
                     {filteredRecords.map((r) => {
                       const isExpanded = expandedRowId === r.id;
                       const p = r.prediction;
+                      const isApplied = appliedTargetId === r.id || appliedTargetId === r.location_id;
+                      const validCoords = isValidCoordinate(r.latitude, r.longitude);
+
                       return (
                         <React.Fragment key={r.id}>
-                          <tr className="hover:bg-slate-900/60 transition-colors">
+                          <tr
+                            className={`transition-colors ${
+                              isApplied
+                                ? 'bg-cyan-950/40 border-l-4 border-l-cyan-400'
+                                : 'hover:bg-slate-900/60'
+                            }`}
+                          >
                             <td className="p-2.5 text-slate-500">{r.index}</td>
                             <td className="p-2.5 font-bold font-sans text-white">
                               <button
@@ -784,10 +803,12 @@ export const CustomDataStudio: React.FC<CustomDataStudioProps> = ({
                                 className="flex items-center gap-1 hover:text-emerald-300 text-left cursor-pointer"
                               >
                                 {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-emerald-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500" />}
-                                <span>{r.location_id}</span>
+                                <span className={isApplied ? 'text-cyan-300 font-extrabold' : ''}>{r.location_id}</span>
                               </button>
                             </td>
-                            <td className="p-2.5 text-slate-400">{r.latitude.toFixed(3)}, {r.longitude.toFixed(3)}</td>
+                            <td className="p-2.5 text-slate-400 font-mono">
+                              {validCoords ? `${r.latitude.toFixed(3)}, ${r.longitude.toFixed(3)}` : <span className="text-red-400 font-bold">Invalid ({r.latitude}, {r.longitude})</span>}
+                            </td>
                             <td className="p-2.5">
                               <span className={r.slope >= 34 && r.slope <= 45 ? 'text-amber-400 font-bold' : 'text-slate-300'}>
                                 {r.slope}°
@@ -801,20 +822,43 @@ export const CustomDataStudio: React.FC<CustomDataStudioProps> = ({
                             <td className="p-2.5">{r.wind_speed_max_24h ?? 0}km/h</td>
                             <td className="p-2.5">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getRiskBadgeClasses(p?.final_risk_level)}`}>
-                                {p?.final_risk_level ?? 'ERROR'}
+                                {p?.final_risk_level ?? (validCoords ? 'CALIBRATED' : 'ERROR')}
                               </span>
                             </td>
                             <td className="p-2.5 font-bold text-emerald-400">
                               {p?.final_risk_score !== undefined && p.final_risk_score !== null ? `${p.final_risk_score.toFixed(1)}` : 'N/A'}
                             </td>
                             <td className="p-2.5 text-right">
-                              <button
-                                onClick={() => handleApplyToConsole(r)}
-                                className="bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer"
-                                title="Load this CSV point into main map console"
-                              >
-                                Apply
-                              </button>
+                              {validCoords ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleApplyToConsole(r)}
+                                  className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-sm ${
+                                    isApplied
+                                      ? 'bg-cyan-950 border border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                                      : 'bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 hover:border-emerald-600'
+                                  }`}
+                                  title={isApplied ? 'Currently active target on GIS console & map' : 'Load this CSV point into main map console'}
+                                >
+                                  {isApplied ? (
+                                    <>
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                                      <span>✓ Applied</span>
+                                    </>
+                                  ) : (
+                                    <span>Apply</span>
+                                  )}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="bg-slate-950 border border-red-900/60 text-red-400/80 px-2 py-1 rounded text-[10px] font-mono cursor-not-allowed opacity-70"
+                                  title="Cannot Apply: Invalid coordinates"
+                                >
+                                  Cannot Apply
+                                </button>
+                              )}
                             </td>
                           </tr>
 

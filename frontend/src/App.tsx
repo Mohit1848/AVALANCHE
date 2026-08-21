@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Header } from './components/common/Header';
+import { Header, type TabKey } from './components/common/Header';
+import { DatasetContextBar } from './components/common/DatasetContextBar';
+import { DisclaimerBanner } from './components/common/DisclaimerBanner';
+import { DataProvenanceModal } from './components/provenance/DataProvenanceModal';
 import { ColoradoMap } from './components/map/ColoradoMap';
 import { RiskAssessmentPanel } from './components/risk/RiskAssessmentPanel';
-import { TerrainPanel } from './components/terrain/TerrainPanel';
-import { SnowpackPanel } from './components/snowpack/SnowpackPanel';
-import { WeatherPanel } from './components/weather/WeatherPanel';
+import { TelemetryMatrixPanel } from './components/telemetry/TelemetryMatrixPanel';
 import { CustomDataStudio } from './components/custom/CustomDataStudio';
 import { SnowWeatherAnalytics } from './components/analytics/SnowWeatherAnalytics';
 import { SafetyAdvisoriesPanel } from './components/advisories/SafetyAdvisoriesPanel';
-import { api, parseCSV, SAMPLE_TEMPLATES } from './services/api';
+import { HistoricalPlaybackPanel } from './components/history/HistoricalPlaybackPanel';
+import { api, parseCSV, SAMPLE_TEMPLATES, detectDomainFromCoords } from './services/api';
 import type {
   HealthStatus,
   TelemetryFreshnessStatus,
@@ -21,26 +23,29 @@ import type {
   LayerVisibilityState,
   EvaluatedPointRecord,
   PredictionContext,
+  GeographicDomain,
 } from './types';
-import { Layers, FileSpreadsheet, MapPin } from 'lucide-react';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'console' | 'custom-data' | 'analytics' | 'advisories'>('console');
+  const [activeTab, setActiveTab] = useState<TabKey>('console');
+  const [selectedDomain, setSelectedDomain] = useState<GeographicDomain>('COLORADO');
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [freshness, setFreshness] = useState<TelemetryFreshnessStatus | null>(null);
   const [zones, setZones] = useState<AvalancheZone[]>([]);
   const [stations, setStations] = useState<SnotelStation[]>([]);
   const [historicalEvents, setHistoricalEvents] = useState<HistoricalEvent[]>([]);
+  const [isProvenanceModalOpen, setIsProvenanceModalOpen] = useState<boolean>(false);
 
-  // Active CSV Dataset State (Powers the whole application)
+  // Active CSV Dataset State (Powers the application)
   const [activeCsvRecords, setActiveCsvRecords] = useState<EvaluatedPointRecord[]>([]);
   const [activeCsvFilename, setActiveCsvFilename] = useState<string>('global_avalanche_mountains_master.csv');
   const [selectedCsvIndex, setSelectedCsvIndex] = useState<number>(0);
   const [regionFilter, setRegionFilter] = useState<'ALL' | 'HIMALAYAS' | 'ALPS' | 'AMERICAS' | 'PACIFIC'>('ALL');
+  const [appliedTargetId, setAppliedTargetId] = useState<string | null>(null);
 
   // Spatial & Layer state
   const [activeRiskSurface] = useState<SpatialPredictionGridResponse | null>(null);
-  const [layerVisibility, setLayerVisibility] = useState<LayerVisibilityState>({
+  const [layerVisibility] = useState<LayerVisibilityState>({
     historicalEvents: true,
     snotelStations: true,
     forecastZones: true,
@@ -51,28 +56,28 @@ export function App() {
     riskSurface: true,
   });
 
-  // Map Filter state
-  const [showHistoricalEvents, setShowHistoricalEvents] = useState<boolean>(true);
+  const [showHistoricalEvents] = useState<boolean>(true);
 
   // Selected Location / Query State
   const [selectedLocation, setSelectedLocation] = useState<SelectedLocationState>({
     type: 'COORDINATE',
-    name: 'Berthoud Pass Summit',
+    name: 'Berthoud Summit (SNOTEL 335)',
     latitude: 39.798,
     longitude: -105.778,
     elevation: 3444.0,
-    slope: 40.0,
+    slope: 36.0,
     aspect: 45.0,
     temperature: -5.5,
-    snow_depth: 165.0,
-    snow_water_equivalent: 280.0,
+    snow_depth: 140.0,
+    snow_water_equivalent: 220.0,
     snowfall_6h: 8.0,
-    snowfall_24h: 36.0,
-    snowfall_72h: 58.0,
+    snowfall_24h: 22.0,
+    snowfall_72h: 38.0,
     temperature_delta_24h: -3.0,
-    wind_speed_mean_24h: 32.0,
-    wind_speed_max_24h: 62.0,
-    telemetry_age_minutes: 12,
+    wind_speed_mean_24h: 24.0,
+    wind_speed_max_24h: 48.0,
+    telemetry_age_minutes: 18,
+    source: 'NRCS_AWDB',
   });
 
   // Active ML Prediction State
@@ -125,7 +130,7 @@ export function App() {
     fetchInitialData();
   }, []);
 
-  // 2. Initial evaluation of default CSV dataset so app starts with real CSV-powered mountain data
+  // 2. Initial evaluation of default CSV dataset
   useEffect(() => {
     const initDefaultCsv = async () => {
       try {
@@ -140,19 +145,19 @@ export function App() {
               location_id: pt.location_id || `CSV Row #${idx + 1}`,
               latitude: pt.latitude,
               longitude: pt.longitude,
-              elevation: pt.elevation ?? 3400,
+              elevation: pt.elevation ?? 3444,
               slope: pt.slope ?? 36,
               aspect: pt.aspect ?? 45,
-              temperature: pt.temperature ?? -5,
+              temperature: pt.temperature ?? -5.5,
               humidity: pt.humidity,
               pressure: pt.pressure,
-              snow_depth: pt.snow_depth ?? 120,
-              snow_water_equivalent: pt.snow_water_equivalent ?? 200,
-              snowfall_6h: pt.snowfall_6h ?? 0,
-              snowfall_24h: pt.snowfall_24h ?? 15,
-              snowfall_72h: pt.snowfall_72h ?? 35,
-              wind_speed_mean_24h: pt.wind_speed_mean_24h ?? 20,
-              wind_speed_max_24h: pt.wind_speed_max_24h ?? 40,
+              snow_depth: pt.snow_depth ?? 140,
+              snow_water_equivalent: pt.snow_water_equivalent ?? 220,
+              snowfall_6h: pt.snowfall_6h ?? 8,
+              snowfall_24h: pt.snowfall_24h ?? 22,
+              snowfall_72h: pt.snowfall_72h ?? 38,
+              wind_speed_mean_24h: pt.wind_speed_mean_24h ?? 24,
+              wind_speed_max_24h: pt.wind_speed_max_24h ?? 48,
               prediction: resItem?.prediction || undefined,
               status: resItem?.error ? 'ERROR' : 'SUCCESS',
               errorMessage: resItem?.error || undefined,
@@ -170,15 +175,15 @@ export function App() {
               slope: first.slope,
               aspect: first.aspect,
               temperature: first.temperature,
-              snow_depth: first.snow_depth ?? 120,
-              snow_water_equivalent: first.snow_water_equivalent ?? 200,
-              snowfall_6h: first.snowfall_6h ?? 0,
-              snowfall_24h: first.snowfall_24h ?? 15,
-              snowfall_72h: first.snowfall_72h ?? 35,
-              temperature_delta_24h: first.temperature_delta_24h ?? 0,
-              wind_speed_mean_24h: first.wind_speed_mean_24h ?? 20,
-              wind_speed_max_24h: first.wind_speed_max_24h ?? 40,
-              telemetry_age_minutes: 0,
+              snow_depth: first.snow_depth ?? 140,
+              snow_water_equivalent: first.snow_water_equivalent ?? 220,
+              snowfall_6h: first.snowfall_6h ?? 8,
+              snowfall_24h: first.snowfall_24h ?? 22,
+              snowfall_72h: first.snowfall_72h ?? 38,
+              temperature_delta_24h: first.temperature_delta_24h ?? -3.0,
+              wind_speed_mean_24h: first.wind_speed_mean_24h ?? 24,
+              wind_speed_max_24h: first.wind_speed_max_24h ?? 48,
+              telemetry_age_minutes: 18,
             });
             if (first.prediction) {
               setPrediction(first.prediction);
@@ -194,30 +199,80 @@ export function App() {
 
   // 3. Evaluate Risk for Selected Location
   const evaluateLocationRisk = async (loc: SelectedLocationState) => {
-    setIsLoadingPrediction(true);
-    try {
-      const pred = await api.predictPoint({
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-        elevation: loc.elevation,
-        slope: loc.slope,
-        aspect: loc.aspect,
-        temperature: loc.temperature,
-        snow_depth: loc.snow_depth,
-        snow_water_equivalent: loc.snow_water_equivalent,
-        snowfall_6h: loc.snowfall_6h,
-        snowfall_24h: loc.snowfall_24h,
-        snowfall_72h: loc.snowfall_72h,
-        temperature_delta_24h: loc.temperature_delta_24h,
-        wind_speed_mean_24h: loc.wind_speed_mean_24h,
-        wind_speed_max_24h: loc.wind_speed_max_24h,
-        location_id: loc.name,
-      });
-      setPrediction(pred);
-    } catch (err: any) {
-      console.error('Prediction query error:', err);
-    } finally {
-      setIsLoadingPrediction(false);
+    const domain = detectDomainFromCoords(loc.latitude, loc.longitude);
+    if (domain === 'COLORADO') {
+      setIsLoadingPrediction(true);
+      try {
+        const pred = await api.predictPoint({
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          elevation: loc.elevation,
+          slope: loc.slope,
+          aspect: loc.aspect,
+          temperature: loc.temperature,
+          snow_depth: loc.snow_depth,
+          snow_water_equivalent: loc.snow_water_equivalent,
+          snowfall_6h: loc.snowfall_6h,
+          snowfall_24h: loc.snowfall_24h,
+          snowfall_72h: loc.snowfall_72h,
+          temperature_delta_24h: loc.temperature_delta_24h,
+          wind_speed_mean_24h: loc.wind_speed_mean_24h,
+          wind_speed_max_24h: loc.wind_speed_max_24h,
+          location_id: loc.name,
+        });
+        setPrediction(pred);
+      } catch (err: any) {
+        console.error('Prediction query error:', err);
+      } finally {
+        setIsLoadingPrediction(false);
+      }
+    } else {
+      // Research domain (Himalayas): execute dedicated Himalayan research inference (N=44)
+      setIsLoadingPrediction(true);
+      try {
+        const pred = await api.predictHimalayaResearch({
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          elevation: loc.elevation,
+          slope: loc.slope,
+          aspect: loc.aspect,
+          temperature: loc.temperature,
+          snow_depth: loc.snow_depth,
+          snow_water_equivalent: loc.snow_water_equivalent,
+          snowfall_6h: loc.snowfall_6h,
+          snowfall_24h: loc.snowfall_24h,
+          snowfall_72h: loc.snowfall_72h,
+          temperature_delta_24h: loc.temperature_delta_24h,
+          wind_speed_mean_24h: loc.wind_speed_mean_24h,
+          wind_speed_max_24h: loc.wind_speed_max_24h,
+          location_id: loc.name,
+          source: loc.source || 'CUSTOM_CSV',
+        });
+        setPrediction(pred);
+      } catch (err: any) {
+        console.error('Himalayan research prediction error:', err);
+        setPrediction({
+          model_risk_score: null,
+          final_risk_score: null,
+          model_risk_level: 'INSUFFICIENT_DATA',
+          final_risk_level: 'INSUFFICIENT_DATA',
+          risk_level: 'INSUFFICIENT_DATA',
+          risk_escalated: false,
+          risk_escalation_reasons: [],
+          data_quality: 'GOOD',
+          warnings: ['Himalayan research model could not evaluate target.'],
+          raw_probability: null,
+          calibrated_probability: null,
+          model_version: 'himalaya_random_forest_v1',
+          operating_threshold: 0.40,
+          thresholds: { medium: 0.40, high: 0.70 },
+          provenance: { source: loc.source || 'CSV_DATASET', domain: 'HIMALAYA' },
+          disclaimer: 'Research Decision-Support Prototype. Operational avalanche forecasting remains disabled for scientific safety.',
+          domain: 'HIMALAYA',
+        });
+      } finally {
+        setIsLoadingPrediction(false);
+      }
     }
   };
 
@@ -226,6 +281,14 @@ export function App() {
     evaluateLocationRisk(selectedLocation);
   }, []);
 
+  const handleSelectLocation = (loc: SelectedLocationState) => {
+    const domain = detectDomainFromCoords(loc.latitude, loc.longitude);
+    setSelectedDomain(domain);
+    setSelectedLocation(loc);
+    setAppliedTargetId(loc.id || loc.name);
+    evaluateLocationRisk(loc);
+  };
+
   const selectCsvRecordByIndex = (records: EvaluatedPointRecord[], index: number) => {
     if (!records || records.length === 0) return;
     const clampedIndex = Math.max(0, Math.min(index, records.length - 1));
@@ -233,7 +296,8 @@ export function App() {
     const rec = records[clampedIndex];
     if (rec) {
       const locState: SelectedLocationState = {
-        type: 'COORDINATE',
+        type: 'CSV_LOCATION',
+        id: rec.id,
         name: rec.location_id,
         latitude: rec.latitude,
         longitude: rec.longitude,
@@ -241,53 +305,23 @@ export function App() {
         slope: rec.slope,
         aspect: rec.aspect,
         temperature: rec.temperature,
-        snow_depth: rec.snow_depth ?? 120,
-        snow_water_equivalent: rec.snow_water_equivalent ?? 200,
-        snowfall_6h: rec.snowfall_6h ?? 0,
-        snowfall_24h: rec.snowfall_24h ?? 15,
-        snowfall_72h: rec.snowfall_72h ?? 35,
-        temperature_delta_24h: rec.temperature_delta_24h ?? 0,
-        wind_speed_mean_24h: rec.wind_speed_mean_24h ?? 20,
-        wind_speed_max_24h: rec.wind_speed_max_24h ?? 40,
+        snow_depth: rec.snow_depth ?? 140,
+        snow_water_equivalent: rec.snow_water_equivalent ?? 220,
+        snowfall_6h: rec.snowfall_6h ?? 8,
+        snowfall_24h: rec.snowfall_24h ?? 22,
+        snowfall_72h: rec.snowfall_72h ?? 38,
+        temperature_delta_24h: rec.temperature_delta_24h ?? -3.0,
+        wind_speed_mean_24h: rec.wind_speed_mean_24h ?? 24,
+        wind_speed_max_24h: rec.wind_speed_max_24h ?? 48,
         telemetry_age_minutes: 0,
+        source: 'CSV_DATASET',
       };
-      setSelectedLocation(locState);
-      if (rec.prediction) {
-        setPrediction(rec.prediction);
-      } else {
-        evaluateLocationRisk(locState);
-      }
+      handleSelectLocation(locState);
     }
   };
 
-  const handleSelectLocation = (loc: SelectedLocationState) => {
-    setSelectedLocation(loc);
-    evaluateLocationRisk(loc);
-  };
-
-  const isRecordInRegion = (r: EvaluatedPointRecord, reg: string) => {
-    if (reg === 'ALL') return true;
-    const lat = r.latitude;
-    const lon = r.longitude;
-    if (reg === 'HIMALAYAS') return lat >= 20 && lat <= 40 && lon >= 68 && lon <= 100;
-    if (reg === 'ALPS') return lat >= 42 && lat <= 49 && lon >= 4 && lon <= 17;
-    if (reg === 'AMERICAS') return (lat >= 30 && lat <= 70 && lon >= -170 && lon <= -60) || (lat >= -56 && lat <= 15 && lon >= -82 && lon <= -60);
-    if (reg === 'PACIFIC') return (lat >= -48 && lat <= -34 && lon >= 165 && lon <= 179) || (lat >= 30 && lat <= 46 && lon >= 128 && lon <= 146) || (lat >= 40 && lat <= 45 && lon >= 38 && lon <= 50) || (lat >= 58 && lat <= 72 && lon >= 5 && lon <= 30);
-    return true;
-  };
-
-  const filteredNavRecords = activeCsvRecords.filter((r) => isRecordInRegion(r, regionFilter));
-
-  const handleRegionChange = (newReg: 'ALL' | 'HIMALAYAS' | 'ALPS' | 'AMERICAS' | 'PACIFIC') => {
-    setRegionFilter(newReg);
-    const subset = activeCsvRecords.filter((r) => isRecordInRegion(r, newReg));
-    if (subset.length > 0) {
-      const firstIndex = activeCsvRecords.findIndex((r) => r.id === subset[0].id);
-      if (firstIndex >= 0) {
-        selectCsvRecordByIndex(activeCsvRecords, firstIndex);
-      }
-    }
-  };
+  const isCsvSource = selectedLocation.source === 'CSV_DATASET' || selectedLocation.type === 'CSV_LOCATION';
+  const isResearchDomain = selectedDomain === 'INDIA' || isCsvSource;
 
   const currentContext: PredictionContext = {
     target_id: selectedLocation.name,
@@ -299,9 +333,9 @@ export function App() {
     slope: selectedLocation.slope,
     aspect: selectedLocation.aspect,
     temperature: selectedLocation.temperature,
-    humidity: selectedLocation.humidity ?? 65,
-    pressure: selectedLocation.pressure ?? 700,
-    precipitation: selectedLocation.precipitation ?? 0,
+    humidity: selectedLocation.humidity ?? 72,
+    pressure: selectedLocation.pressure ?? 670,
+    precipitation: selectedLocation.precipitation ?? 8.0,
     wind_speed_mean_24h: selectedLocation.wind_speed_mean_24h,
     wind_speed_max_24h: selectedLocation.wind_speed_max_24h,
     snow_depth: selectedLocation.snow_depth,
@@ -312,36 +346,42 @@ export function App() {
     temperature_delta_24h: selectedLocation.temperature_delta_24h,
     temperature_delta_72h: selectedLocation.temperature_delta_72h ?? null,
     telemetry_timestamp: new Date().toISOString(),
-    telemetry_age_minutes: selectedLocation.telemetry_age_minutes ?? 0,
-    data_quality: prediction?.data_quality ?? 'GOOD',
+    telemetry_age_minutes: isResearchDomain ? 0 : (selectedLocation.telemetry_age_minutes ?? 18),
+    data_quality: isResearchDomain ? 'GOOD' : (prediction?.data_quality ?? 'GOOD'),
     freshness_state: 'GOOD',
     assessment_status: 'CURRENT',
-    prediction_available: !!prediction,
+    prediction_available: !isResearchDomain && !!prediction,
     suppression_reason: null,
     current_utc: new Date().toISOString(),
     telemetry_status: 'GOOD',
-    last_observation_timestamp: new Date().toISOString(),
+    last_observation_timestamp: isResearchDomain ? null : new Date().toISOString(),
+    telemetry_source: isResearchDomain ? 'CUSTOM CSV DATASET' : 'USDA NRCS AWDB',
+    domain: selectedDomain === 'INDIA' ? 'HIMALAYA' : 'COLORADO',
     prediction: prediction,
     isLoading: isLoadingPrediction,
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* 1. Real-World Clean Brand Header */}
+    <div className="min-h-screen bg-[#070b12] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
+      {/* 1. Header (Brand Identity + Single Navigation Bar) */}
       <Header
         health={health}
         freshness={freshness}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        activePassCount={activeCsvRecords.length}
+        activePassCount={activeCsvRecords.length || 8}
+        selectedDomain={selectedDomain}
+        setSelectedDomain={setSelectedDomain}
+        onOpenUploadModal={() => setActiveTab('custom-data')}
       />
 
-      {/* 2. Main Operational Views */}
+      {/* 2. Main Views */}
       {activeTab === 'custom-data' ? (
-        <main className="flex-1 p-3.5 sm:p-5 min-w-0">
+        <main className="flex-1 p-3.5 sm:p-5 min-w-0 max-w-[1920px] mx-auto w-full">
           <CustomDataStudio
             activeCsvRecords={activeCsvRecords}
             activeCsvFilename={activeCsvFilename}
+            appliedTargetId={appliedTargetId}
             onSetActiveCsvDataset={(records, filename) => {
               setActiveCsvRecords(records);
               setActiveCsvFilename(filename);
@@ -357,7 +397,7 @@ export function App() {
           />
         </main>
       ) : activeTab === 'analytics' ? (
-        <main className="flex-1 p-3.5 sm:p-5 min-w-0">
+        <main className="flex-1 p-3.5 sm:p-5 min-w-0 max-w-[1920px] mx-auto w-full">
           <SnowWeatherAnalytics
             records={activeCsvRecords}
             activeCsvFilename={activeCsvFilename}
@@ -369,7 +409,7 @@ export function App() {
           />
         </main>
       ) : activeTab === 'advisories' ? (
-        <main className="flex-1 p-3.5 sm:p-5 min-w-0">
+        <main className="flex-1 p-3.5 sm:p-5 min-w-0 max-w-[1920px] mx-auto w-full">
           <SafetyAdvisoriesPanel
             records={activeCsvRecords}
             activeCsvFilename={activeCsvFilename}
@@ -380,191 +420,49 @@ export function App() {
             onNavigateToConsole={() => setActiveTab('console')}
           />
         </main>
+      ) : activeTab === 'history' ? (
+        <main className="flex-1 p-3.5 sm:p-5 min-w-0 max-w-[1920px] mx-auto w-full">
+          <HistoricalPlaybackPanel />
+        </main>
       ) : (
-        /* OPERATIONS CONSOLE */
-        <main className="flex-1 p-3.5 sm:p-5 space-y-4 max-w-[1600px] mx-auto w-full min-w-0">
-          {/* Active Mountain Pass Navigator Bar */}
+        /* ================= 4. OPERATIONS CONSOLE (3-COLUMN LAYOUT) ================= */
+        <main className="flex-1 flex flex-col min-w-0 w-full">
+          {/* Dataset Context Bar */}
           {activeCsvRecords.length > 0 && (
-            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-800/60 rounded-xl p-3 flex flex-col gap-2.5 text-xs shadow-lg">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="bg-emerald-950 p-2 rounded-xl border border-emerald-700 text-emerald-400 shrink-0 shadow-sm">
-                    <FileSpreadsheet className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">OPERATIONAL DATASET:</span>
-                      <strong className="text-emerald-300 text-xs font-mono truncate">{activeCsvFilename}</strong>
-                      <span className="text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full shrink-0">
-                        {activeCsvRecords.length} Global Mountains Loaded
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pass Quick Chips & Controls */}
-                <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
-                  <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-0.5">
-                    <button
-                      onClick={() => selectCsvRecordByIndex(activeCsvRecords, selectedCsvIndex - 1)}
-                      disabled={selectedCsvIndex <= 0}
-                      className="px-2.5 py-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer font-bold transition-all"
-                      title="Previous mountain"
-                    >
-                      &larr; Prev
-                    </button>
-                    <span className="px-2.5 text-emerald-400 font-bold border-x border-slate-800">
-                      {selectedCsvIndex + 1} / {activeCsvRecords.length}
-                    </span>
-                    <button
-                      onClick={() => selectCsvRecordByIndex(activeCsvRecords, selectedCsvIndex + 1)}
-                      disabled={selectedCsvIndex >= activeCsvRecords.length - 1}
-                      className="px-2.5 py-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer font-bold transition-all"
-                      title="Next mountain"
-                    >
-                      Next &rarr;
-                    </button>
-                  </div>
-
-                  <select
-                    value={selectedCsvIndex}
-                    onChange={(e) => selectCsvRecordByIndex(activeCsvRecords, parseInt(e.target.value, 10))}
-                    className="bg-slate-950 border border-emerald-700/80 text-emerald-300 font-bold rounded-lg px-3 py-1 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[320px] truncate shadow-inner"
-                    aria-label="Select Mountain Location"
-                  >
-                    {filteredNavRecords.map((r) => {
-                      const actualIdx = activeCsvRecords.findIndex((item) => item.id === r.id);
-                      return (
-                        <option key={r.id} value={actualIdx}>
-                          {actualIdx + 1}. {r.location_id} ({r.prediction?.final_risk_level ?? 'CALC'})
-                        </option>
-                      );
-                    })}
-                  </select>
-
-                  <button
-                    onClick={() => setActiveTab('custom-data')}
-                    className="bg-emerald-950 hover:bg-emerald-900 border border-emerald-700 text-emerald-200 px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer shrink-0 transition-all shadow-sm"
-                  >
-                    Upload / Presets
-                  </button>
-                </div>
-              </div>
-
-              {/* Quick Continent Filter Bar */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-800/80 text-[11px] font-mono">
-                <span className="text-[10px] text-slate-400 uppercase font-bold shrink-0">FILTER CONTINENT:</span>
-                <button
-                  onClick={() => handleRegionChange('ALL')}
-                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
-                    regionFilter === 'ALL'
-                      ? 'bg-emerald-600 text-white font-bold shadow-sm'
-                      : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
-                  }`}
-                >
-                  🌍 All ({activeCsvRecords.length})
-                </button>
-                <button
-                  onClick={() => handleRegionChange('HIMALAYAS')}
-                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
-                    regionFilter === 'HIMALAYAS'
-                      ? 'bg-amber-600 text-white font-bold shadow-sm'
-                      : 'bg-slate-950 text-amber-400 hover:text-amber-200 border border-amber-900/60'
-                  }`}
-                >
-                  🏔️ Himalayas & Asia
-                </button>
-                <button
-                  onClick={() => handleRegionChange('ALPS')}
-                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
-                    regionFilter === 'ALPS'
-                      ? 'bg-cyan-600 text-white font-bold shadow-sm'
-                      : 'bg-slate-950 text-cyan-400 hover:text-cyan-200 border border-cyan-900/60'
-                  }`}
-                >
-                  ⛷️ European Alps
-                </button>
-                <button
-                  onClick={() => handleRegionChange('AMERICAS')}
-                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
-                    regionFilter === 'AMERICAS'
-                      ? 'bg-emerald-600 text-white font-bold shadow-sm'
-                      : 'bg-slate-950 text-emerald-400 hover:text-emerald-200 border border-emerald-900/60'
-                  }`}
-                >
-                  🌲 Americas (Rockies & Andes)
-                </button>
-                <button
-                  onClick={() => handleRegionChange('PACIFIC')}
-                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
-                    regionFilter === 'PACIFIC'
-                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
-                      : 'bg-slate-950 text-indigo-400 hover:text-indigo-200 border border-indigo-900/60'
-                  }`}
-                >
-                  🗾 Japan, NZ & Scandinavia
-                </button>
-              </div>
-            </div>
+            <DatasetContextBar
+              filename={activeCsvFilename}
+              records={activeCsvRecords}
+              selectedIndex={selectedCsvIndex}
+              onSelectIndex={(idx) => selectCsvRecordByIndex(activeCsvRecords, idx)}
+              regionFilter={regionFilter}
+              onRegionChange={(reg) => {
+                setRegionFilter(reg);
+                const subset = activeCsvRecords.filter((r) => {
+                  if (reg === 'ALL') return true;
+                  const lat = r.latitude;
+                  const lon = r.longitude;
+                  if (reg === 'HIMALAYAS') return lat >= 20 && lat <= 40 && lon >= 68 && lon <= 100;
+                  if (reg === 'ALPS') return lat >= 42 && lat <= 49 && lon >= 4 && lon <= 17;
+                  if (reg === 'AMERICAS') return (lat >= 30 && lat <= 70 && lon >= -170 && lon <= -60) || (lat >= -56 && lat <= 15 && lon >= -82 && lon <= -60);
+                  if (reg === 'PACIFIC') return (lat >= -48 && lat <= -34 && lon >= 165 && lon <= 179) || (lat >= 30 && lat <= 46 && lon >= 128 && lon <= 146) || (lat >= 40 && lat <= 45 && lon >= 38 && lon <= 50) || (lat >= 58 && lat <= 72 && lon >= 5 && lon <= 30);
+                  return true;
+                });
+                if (subset.length > 0) {
+                  const firstIndex = activeCsvRecords.findIndex((r) => r.id === subset[0].id);
+                  if (firstIndex >= 0) {
+                    selectCsvRecordByIndex(activeCsvRecords, firstIndex);
+                  }
+                }
+              }}
+              onOpenDataStudio={() => setActiveTab('custom-data')}
+            />
           )}
 
-          {/* Main Operational Split Grid: GIS Map (Left) + Risk Intelligence Card (Right) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start min-w-0">
-            {/* LEFT (7 Cols): Interactive Topographic GIS Map */}
-            <div className="lg:col-span-7 flex flex-col space-y-2.5 min-w-0 w-full">
-              {/* Map Layer Toolbar */}
-              <div className="bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono text-slate-400 font-bold uppercase text-[10px] flex items-center gap-1">
-                    <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>GIS LAYERS:</span>
-                  </span>
-                  <div className="flex flex-wrap gap-1 text-[11px] font-mono">
-                    <button
-                      onClick={() =>
-                        setLayerVisibility((prev) => ({ ...prev, contours50m: !prev.contours50m }))
-                      }
-                      className={`px-2 py-0.5 rounded border transition-all cursor-pointer ${
-                        layerVisibility.contours50m
-                          ? 'bg-cyan-950 border-cyan-700 text-cyan-300 font-semibold'
-                          : 'bg-slate-950 border-slate-800 text-slate-500'
-                      }`}
-                    >
-                      50m Contours
-                    </button>
-                    <button
-                      onClick={() =>
-                        setLayerVisibility((prev) => ({ ...prev, snotelStations: !prev.snotelStations }))
-                      }
-                      className={`px-2 py-0.5 rounded border transition-all cursor-pointer ${
-                        layerVisibility.snotelStations
-                          ? 'bg-emerald-950 border-emerald-700 text-emerald-300 font-semibold'
-                          : 'bg-slate-950 border-slate-800 text-slate-500'
-                      }`}
-                    >
-                      SNOTEL
-                    </button>
-                    <button
-                      onClick={() => setShowHistoricalEvents((prev) => !prev)}
-                      className={`px-2 py-0.5 rounded border transition-all cursor-pointer ${
-                        showHistoricalEvents
-                          ? 'bg-purple-950 border-purple-700 text-purple-300 font-semibold'
-                          : 'bg-slate-950 border-slate-800 text-slate-500'
-                      }`}
-                    >
-                      Historical
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 text-slate-400 font-mono text-[11px] truncate">
-                  <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span className="truncate">{selectedLocation.name}</span>
-                </div>
-              </div>
-
-              {/* Leaflet Map Box */}
-              <div className="relative w-full h-[380px] sm:h-[440px] md:h-[480px] lg:h-[500px] xl:h-[clamp(500px,58vh,640px)] rounded-xl overflow-hidden min-w-0 shadow-xl border border-slate-800">
+          {/* 3-Column Grid Container */}
+          <div className="p-3 sm:p-4 max-w-[1920px] mx-auto w-full flex-1">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start min-w-0">
+              {/* COLUMN 1: GIS Operations Map (Left ~38-40%) */}
+              <div className="lg:col-span-5 xl:col-span-5 min-w-0 w-full h-full min-h-[500px] lg:min-h-[720px] flex flex-col">
                 <ColoradoMap
                   zones={zones}
                   stations={stations}
@@ -575,45 +473,43 @@ export function App() {
                   activeRiskLevel={prediction?.final_risk_level}
                   layerVisibility={layerVisibility}
                   riskSurface={activeRiskSurface}
-                  selectedDomain="COLORADO"
+                  selectedDomain={selectedDomain}
                 />
               </div>
-            </div>
 
-            {/* RIGHT (5 Cols): Real-Time Risk Intelligence & Safety Assessment */}
-            <div className="lg:col-span-5 flex flex-col space-y-3 min-w-0 w-full">
-              <RiskAssessmentPanel
-                context={currentContext}
-                onRefresh={() => evaluateLocationRisk(selectedLocation)}
-              />
-            </div>
-          </div>
+              {/* COLUMN 2: Target Evaluation & Decision Policy Engine (Center ~33-35%) */}
+              <div className="lg:col-span-4 xl:col-span-4 min-w-0 w-full space-y-3">
+                <RiskAssessmentPanel
+                  context={currentContext}
+                  onRefresh={() => evaluateLocationRisk(selectedLocation)}
+                />
+              </div>
 
-          {/* Bottom Diagnostics Grid: Terrain + Snowpack + Weather */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0 w-full">
-            <div className="min-w-0 w-full">
-              <TerrainPanel context={currentContext} />
-            </div>
-            <div className="min-w-0 w-full">
-              <SnowpackPanel context={currentContext} />
-            </div>
-            <div className="min-w-0 w-full">
-              <WeatherPanel context={currentContext} />
+              {/* COLUMN 3: Live Telemetry, Diagnostics & Spatial Intelligence (Right ~28-30%) */}
+              <div className="lg:col-span-3 xl:col-span-3 min-w-0 w-full space-y-3">
+                <TelemetryMatrixPanel
+                  context={currentContext}
+                  riskSurface={activeRiskSurface}
+                />
+              </div>
             </div>
           </div>
         </main>
       )}
 
-      {/* Modern Operational Footer */}
-      <footer className="bg-slate-950 border-t border-slate-800 px-4 py-3 text-center text-xs text-slate-500 font-mono flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span>AVALANCHE RISK INTELLIGENCE • MOUNTAIN SAFETY OPERATIONS SYSTEM</span>
-        </div>
-        <div className="text-slate-600 text-[11px]">
-          Operational Decision Support for Backcountry, Highways & Search and Rescue
-        </div>
-      </footer>
+      {/* 5. Bottom Operational Disclaimer & Provenance Bar */}
+      <DisclaimerBanner
+        onOpenProvenance={() => setIsProvenanceModalOpen(true)}
+        modelVersion={prediction?.model_version || 'Colorado Avalanche RF v3 (Calibrated)'}
+        syncTimestamp="2026-05-15 10:24 UTC"
+      />
+
+      {/* 6. Data Provenance Modal */}
+      <DataProvenanceModal
+        isOpen={isProvenanceModalOpen}
+        onClose={() => setIsProvenanceModalOpen(false)}
+        context={currentContext}
+      />
     </div>
   );
 }

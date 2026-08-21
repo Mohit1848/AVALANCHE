@@ -2,6 +2,35 @@ export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'INSUFFICIENT_DATA';
 export type DataQuality = 'GOOD' | 'DEGRADED' | 'STALE' | 'INSUFFICIENT';
 export type SpatialQuality = 'EXCELLENT' | 'GOOD' | 'DEGRADED' | 'INSUFFICIENT';
 
+export type RiskStateKind =
+  | 'AVAILABLE'
+  | 'RESEARCH'
+  | 'INSUFFICIENT_DATA'
+  | 'DISABLED'
+  | 'STALE'
+  | 'HISTORICAL'
+  | 'ERROR';
+
+export interface RiskDisplayState {
+  kind: RiskStateKind;
+  hasValidScore: boolean;
+  score: number | null;
+  level: string;
+  modelScore: number | null;
+  modelLevel: string;
+  calibratedProbability: number | null;
+  isEscalated: boolean;
+  escalationReasons: string[];
+  reasonTitle: string;
+  reasonDescription: string;
+  modelStatusText: string;
+  inferenceStatusText: string;
+  dataRequirementText: string;
+  domain: string;
+  isResearchDomain: boolean;
+  isResearchMode?: boolean;
+}
+
 export interface RiskPredictionResponse {
   model_risk_score: number | null;
   final_risk_score: number | null;
@@ -41,7 +70,7 @@ export interface RuleEvaluationItem {
 export interface PredictionContext {
   target_id: string;
   target_name: string;
-  target_type: 'STATION' | 'COORDINATE' | 'ZONE' | 'PEAK';
+  target_type: 'STATION' | 'COORDINATE' | 'ZONE' | 'PEAK' | 'CSV_LOCATION';
   latitude: number;
   longitude: number;
   elevation: number;
@@ -79,6 +108,7 @@ export interface PredictionContext {
   last_observation_timestamp: string | null;
   telemetry_source?: string;
   terrain_source?: string;
+  domain?: string;
 
   // Risk & Prediction
   prediction: RiskPredictionResponse | null;
@@ -131,7 +161,8 @@ export interface StationTelemetryBatchRequest {
 }
 
 export interface SelectedLocationState {
-  type: 'COORDINATE' | 'ZONE' | 'STATION';
+  type: 'COORDINATE' | 'ZONE' | 'STATION' | 'CSV_LOCATION';
+  id?: string;
   name: string;
   latitude: number;
   longitude: number;
@@ -152,6 +183,8 @@ export interface SelectedLocationState {
   wind_speed_mean_24h: number;
   wind_speed_max_24h: number;
   telemetry_age_minutes?: number;
+  region?: string;
+  source?: 'CSV_DATASET' | 'NRCS_AWDB' | 'MANUAL_COORDINATE' | 'HIMALAYAN_CATALOG';
 }
 
 export interface HealthStatus {

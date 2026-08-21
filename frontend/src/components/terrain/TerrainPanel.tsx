@@ -1,115 +1,107 @@
 import React from 'react';
 import { Mountain } from 'lucide-react';
 import type { PredictionContext } from '../../types';
+import { Section, MetricRow } from '../ui/Primitives';
 
 interface TerrainPanelProps {
   context: PredictionContext;
 }
 
+const getAspectDirection = (deg: number | null) => {
+  if (deg === null || isNaN(deg)) return 'N/A';
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return directions[Math.round(deg / 45) % 8];
+};
+
 export const TerrainPanel: React.FC<TerrainPanelProps> = ({ context }) => {
   const slope = context.slope;
+  // Presentation-only heuristic band. Not a causal or predictive claim.
   const isProneSlope = slope !== null && slope >= 30.0 && slope <= 45.0;
-
-  // Aspect compass needle angle
   const aspectAngle = context.aspect;
-  const getAspectDirection = (deg: number | null) => {
-    if (deg === null || isNaN(deg)) return 'N/A';
-    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    const idx = Math.round(deg / 45) % 8;
-    return directions[idx];
-  };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 font-sans text-slate-100 min-w-0">
-      <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2 gap-2 min-w-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <Mountain className="w-4 h-4 text-cyan-400 shrink-0" />
-          <h3 className="text-xs font-bold font-mono uppercase text-slate-200 truncate">
-            TERRAIN & DIGITAL ELEVATION MODEL (DEM)
-          </h3>
-        </div>
-        <span className="text-[10px] font-mono bg-slate-800 px-2 py-0.5 rounded text-slate-300 shrink-0 border border-slate-700">
-          {context.terrain_source || 'Copernicus GLO-30 DEM (30m)'} · STATIC TERRAIN BASELINE
-        </span>
-      </div>
+    <Section
+      title="TERRAIN"
+      icon={<Mountain className="w-3.5 h-3.5" />}
+      meta={<span className="t-meta truncate-safe">{context.terrain_source || 'Copernicus GLO-30 (30m)'}</span>}
+      testId="terrain-panel"
+    >
+      <div className="min-w-0">
+        <MetricRow
+          label="Slope"
+          value={slope !== null ? `${slope.toFixed(1)}°` : 'N/A'}
+          tone={isProneSlope ? 'warn' : undefined}
+          hint="Starting-zone slope angle derived from the DEM"
+          testId="terrain-slope"
+        />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
-        {/* 1. Slope Angle Meter */}
-        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2 min-w-0">
-          <div className="flex justify-between items-center text-xs gap-1">
-            <span className="text-slate-400 font-semibold truncate">Starting Zone Slope:</span>
-            <span className={`font-mono font-bold text-sm shrink-0 ${isProneSlope ? 'text-amber-400' : 'text-slate-200'}`}>
-              {slope !== null ? `${slope.toFixed(1)}°` : 'N/A'}
-            </span>
-          </div>
-
-          {/* Visual slope range bar */}
-          <div className="space-y-1 min-w-0">
-            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden relative">
-              {/* Prone 30-45 deg zone highlight */}
-              <div className="absolute left-[33%] w-[17%] h-full bg-amber-500/30"></div>
-              <div
-                className={`h-full transition-all duration-300 ${
-                  isProneSlope ? 'bg-amber-400' : 'bg-cyan-500'
-                }`}
-                style={{ width: slope !== null ? `${Math.min(100, (slope / 60) * 100)}%` : '0%' }}
-              ></div>
-            </div>
-            <div className="flex justify-between text-[9px] font-mono text-slate-500">
-              <span>0°</span>
-              <span className="text-amber-400 font-bold">30°–45° Prone Range</span>
-              <span>60°+</span>
-            </div>
-          </div>
-          {isProneSlope && (
-            <div className="text-[10px] text-amber-300 font-mono break-words leading-tight">
-              <span>⚠️ Terrain heuristic: slope falls within common avalanche-prone slope-angle range</span>
-            </div>
-          )}
-        </div>
-
-        {/* 2. Aspect Compass Rose */}
-        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between gap-2 min-w-0">
-          <div className="space-y-1 min-w-0 flex-1">
-            <div className="text-xs text-slate-400 font-semibold truncate">Slope Aspect:</div>
-            <div className="text-base font-bold text-slate-100 font-mono">
-              {aspectAngle !== null ? `${getAspectDirection(aspectAngle)} (${aspectAngle.toFixed(0)}°)` : 'N/A'}
-            </div>
-            <div className="text-[10px] text-slate-400 leading-tight break-words">
-              Wind-loading assessment requires localized wind-direction telemetry
-            </div>
-          </div>
-
-          {/* Visual Compass SVG */}
-          <div className="relative w-12 h-12 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center shrink-0">
-            <div className="text-[8px] font-mono absolute top-0.5 text-slate-400">N</div>
-            <div className="text-[8px] font-mono absolute bottom-0.5 text-slate-400">S</div>
-            <div className="text-[8px] font-mono absolute left-0.5 text-slate-400">W</div>
-            <div className="text-[8px] font-mono absolute right-0.5 text-slate-400">E</div>
-            {/* Needle */}
+        {/* Slope scale with the heuristic band marked */}
+        <div className="py-1.5 min-w-0">
+          <div
+            className="relative w-full rounded-full overflow-hidden"
+            style={{ height: 5, background: 'var(--surface-inset)', border: '1px solid var(--border-subtle)' }}
+            role="img"
+            aria-label={`Slope ${slope ?? 'unknown'} degrees on a 0 to 60 degree scale`}
+          >
             <div
-              className="w-1 h-8 bg-gradient-to-t from-transparent via-cyan-400 to-red-500 rounded transition-transform duration-300"
-              style={{ transform: `rotate(${aspectAngle ?? 0}deg)` }}
-            ></div>
-          </div>
-        </div>
-
-        {/* 3. Elevation & Topographic Setting */}
-        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1 min-w-0">
-          <div className="text-xs text-slate-400 font-semibold truncate">Starting Elevation:</div>
-          <div className="text-base sm:text-lg font-bold text-slate-100 font-mono break-words">
-            {context.elevation !== null ? `${context.elevation.toLocaleString()} meters` : 'N/A'}
-            {context.elevation !== null && (
-              <span className="text-xs font-normal text-slate-400 ml-1">
-                ({(context.elevation * 3.28084).toFixed(0)} ft)
-              </span>
+              className="absolute inset-y-0"
+              style={{ left: '50%', width: '25%', background: 'var(--status-warn)', opacity: 0.22 }}
+            />
+            {slope !== null && (
+              <div
+                className="absolute inset-y-0 left-0"
+                style={{
+                  width: `${Math.min(100, (slope / 60) * 100)}%`,
+                  background: isProneSlope ? 'var(--status-warn)' : 'var(--accent)',
+                  transition: 'width 300ms cubic-bezier(0.4,0,0.2,1)',
+                }}
+              />
             )}
           </div>
-          <div className="text-[10px] font-mono text-cyan-400 truncate">
-            {context.elevation !== null && context.elevation > 3500 ? 'Alpine Zone (Above Treeline)' : 'Near / Below Treeline'}
+          <div className="flex justify-between t-meta mt-1 gap-2">
+            <span className="shrink-0">0°</span>
+            <span
+              className="truncate-safe font-bold"
+              style={{ color: 'var(--status-warn)' }}
+              title="Heuristic band only — not a causal or universally predictive rule"
+            >
+              30°–45° Prone Range (Heuristic)
+            </span>
+            <span className="shrink-0">60°+</span>
           </div>
         </div>
+
+        {isProneSlope && (
+          <div className="t-meta wrap-safe py-1" style={{ color: 'var(--status-warn)' }}>
+            Terrain heuristic: slope falls within the commonly cited avalanche-prone slope-angle range.
+          </div>
+        )}
+
+        <MetricRow
+          label="Aspect"
+          value={aspectAngle !== null ? `${getAspectDirection(aspectAngle)} ${aspectAngle.toFixed(0)}°` : 'N/A'}
+          hint="Slope aspect in degrees, 0 = North"
+          testId="terrain-aspect"
+        />
+        <MetricRow
+          label="Elevation"
+          value={context.elevation !== null ? `${context.elevation.toLocaleString()} m` : 'N/A'}
+          hint="Starting-zone elevation above sea level"
+          testId="terrain-elevation"
+        />
+        <MetricRow
+          label="Zone"
+          value={
+            context.elevation !== null && context.elevation > 3500
+              ? 'Alpine (above treeline)'
+              : 'Near / below treeline'
+          }
+        />
+
+        <div className="t-meta wrap-safe pt-1.5 mt-1" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          Wind-loading assessment requires localized wind-direction telemetry
+        </div>
       </div>
-    </div>
+    </Section>
   );
 };
