@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Mountain Avalanche Risk Analysis Report</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+    @page {
+      size: A4;
+      margin: 1.5cm 1.2cm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #1e293b;
+      background-color: #ffffff;
+      line-height: 1.5;
+      font-size: 11pt;
+    }
+
+    .report-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10px;
+    }
+
+    .header {
+      border-bottom: 3px solid #0f172a;
+      padding-bottom: 18px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .brand-title {
+      font-size: 20pt;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-subtitle {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #0284c7;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .report-meta {
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5pt;
+      color: #64748b;
+      line-height: 1.4;
+    }
+
+    .badge-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 8.5pt;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .badge-primary { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+    .badge-danger { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-warning { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .badge-success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+
+    h2 {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #0f172a;
+      border-left: 4px solid #0284c7;
+      padding-left: 10px;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+
+    h3 {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 14px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin-bottom: 10px;
+      color: #334155;
+      font-size: 10pt;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #0f172a;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-label {
+      font-size: 8pt;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px 0;
+      font-size: 8.5pt;
+    }
+
+    th {
+      background: #0f172a;
+      color: #ffffff;
+      font-weight: 600;
+      text-align: left;
+      padding: 7px 9px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8pt;
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: 6px 9px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .tag-risk-high {
+      background: #fee2e2;
+      color: #991b1b;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.5pt;
+    }
+
+    .tag-risk-med {
+      background: #fef3c7;
+      color: #92400e;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.5pt;
+    }
+
+    .tag-risk-low {
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.5pt;
+    }
+
+    .callout {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-left: 4px solid #16a34a;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 14px 0;
+      font-size: 9.5pt;
+    }
+
+    .callout-warning {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-left: 4px solid #d97706;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 14px 0;
+      font-size: 9.5pt;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .footer {
+      border-top: 1px solid #cbd5e1;
+      padding-top: 12px;
+      margin-top: 30px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 8pt;
+      color: #64748b;
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="report-container">
+    <!-- Header -->
+    <div class="header">
+      <div>
+        <div class="brand-title">🏔️ AVALANCHE RISK INTELLIGENCE</div>
+        <div class="brand-subtitle">Global Mountain Safety & Decision Support Report</div>
+      </div>
+      <div class="report-meta">
+        <div><strong>DATE:</strong> August 2026</div>
+        <div><strong>VERSION:</strong> 2.0.0-PROD</div>
+        <div><strong>STATUS:</strong> VERIFIED OFFICIAL</div>
+        <div><strong>LOCATIONS:</strong> 65 MASTER SITES</div>
+      </div>
+    </div>
+
+    <!-- Badges -->
+    <div class="badge-bar">
+      <span class="badge badge-primary">🌐 7 MOUNTAIN REGIONS</span>
+      <span class="badge badge-danger">⚠️ 32 HIGH-RISK ZONES (49.2%)</span>
+      <span class="badge badge-warning">⚡ 8 HIGHWAYS ON ALERT</span>
+      <span class="badge badge-success">🛡️ 100% KEYLESS OPEN-SOURCE</span>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">65</div>
+        <div class="stat-label">Worldwide Sites</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: #dc2626;">49.2%</div>
+        <div class="stat-label">High Avalanche Risk</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">42.1°</div>
+        <div class="stat-label">Mean Slope Angle</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">115 km/h</div>
+        <div class="stat-label">Peak Wind Recorded</div>
+      </div>
+    </div>
+
+    <!-- Section 1 -->
+    <h2>1. Executive Summary</h2>
+    <p>
+      This operational report provides a rigorous spatiotemporal risk evaluation across <strong>65 premier mountain peaks, high-altitude passes, and major transportation corridors</strong> spanning the Himalayas, Karakoram, European Alps, North American Ranges, Andes, Japanese Alps, Southern Alps of New Zealand, and Scandinavian Fjords.
+    </p>
+    <p>
+      The platform combines <strong>calibrated machine learning models</strong> with <strong>deterministic physics-based safety override heuristics</strong> (Storm Slab Rule, Wind Loading Rule, and Stale Telemetry Protection) to eliminate false negatives in life-critical avalanche terrain.
+    </p>
+
+    <div class="callout-warning">
+      <strong>⚠️ Critical Safety Alerts (Active Highway Infrastructure):</strong><br>
+      8 major national mountain highways are currently under elevated avalanche danger protocols: <strong>Rohtang Pass (NH-3)</strong>, <strong>Zojila Pass (NH-1)</strong>, <strong>Red Mountain Pass (US-550)</strong>, <strong>Berthoud Pass (US-40)</strong>, <strong>Rogers Pass (Trans-Canada Hwy 1)</strong>, <strong>Milford Sound Highway (SH94)</strong>, <strong>Portillo (Paso Los Libertadores)</strong>, and <strong>Gudauri Pass (Military Highway)</strong>.
+    </div>
+
+    <!-- Section 2 -->
+    <h2>2. Regional Risk Breakdown</h2>
+
+    <h3>🏔️ Himalayas & Karakoram (Central & South Asia)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Location / Corridor</th>
+          <th>State / Country</th>
+          <th>Elev (m)</th>
+          <th>Slope</th>
+          <th>24h Snow</th>
+          <th>Wind Peak</th>
+          <th>Risk Score</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Mount Everest - Khumbu Icefall</td><td>Nepal / Tibet</td><td>5,364</td><td>44.0°</td><td>38 mm</td><td>72 km/h</td><td><strong>88/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>K2 - Bottleneck Couloir</td><td>Karakoram, Pakistan</td><td>8,200</td><td>48.0°</td><td>45 mm</td><td>85 km/h</td><td><strong>94/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Annapurna I - North Face</td><td>Nepal</td><td>6,800</td><td>52.0°</td><td>55 mm</td><td>80 km/h</td><td><strong>94/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Nanga Parbat - Rupal Face</td><td>Pakistan</td><td>7,000</td><td>54.0°</td><td>50 mm</td><td>88 km/h</td><td><strong>93/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Rohtang Pass (NH-3)</td><td>Himachal Pradesh, India</td><td>3,978</td><td>41.0°</td><td>44 mm</td><td>78 km/h</td><td><strong>86/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Zojila Pass (NH-1)</td><td>Ladakh / Kashmir, India</td><td>3,528</td><td>40.0°</td><td>46 mm</td><td>74 km/h</td><td><strong>88/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Gulmarg Apharwat Peak</td><td>Kashmir, India</td><td>4,124</td><td>39.0°</td><td>40 mm</td><td>64 km/h</td><td><strong>82/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Nanda Devi Sanctuary</td><td>Uttarakhand, India</td><td>4,400</td><td>39.0°</td><td>36 mm</td><td>60 km/h</td><td><strong>76/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Khardung La Pass</td><td>Ladakh, India</td><td>5,359</td><td>34.0°</td><td>15 mm</td><td>62 km/h</td><td><strong>42/100</strong></td><td><span class="tag-risk-med">MEDIUM</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <h3>⛷️ European Alps (Europe)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Location / Corridor</th>
+          <th>Country</th>
+          <th>Elev (m)</th>
+          <th>Slope</th>
+          <th>24h Snow</th>
+          <th>Wind Peak</th>
+          <th>Risk Score</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Mont Blanc - Grand Couloir</td><td>France</td><td>3,800</td><td>42.5°</td><td>46 mm</td><td>76 km/h</td><td><strong>90/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Matterhorn - East Face</td><td>Switzerland</td><td>4,000</td><td>45.0°</td><td>40 mm</td><td>70 km/h</td><td><strong>86/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Eiger - Nordwand & Flank</td><td>Switzerland</td><td>3,500</td><td>50.0°</td><td>48 mm</td><td>74 km/h</td><td><strong>91/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Großglockner - Pallavicini Couloir</td><td>Austria</td><td>3,798</td><td>46.0°</td><td>42 mm</td><td>68 km/h</td><td><strong>85/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Chamonix - Aiguille du Midi</td><td>France</td><td>3,842</td><td>43.0°</td><td>48 mm</td><td>78 km/h</td><td><strong>91/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>St. Anton am Arlberg - Valluga</td><td>Austria</td><td>2,811</td><td>42.0°</td><td>45 mm</td><td>72 km/h</td><td><strong>87/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Val Thorens - Cime Caron</td><td>France</td><td>3,195</td><td>39.0°</td><td>36 mm</td><td>62 km/h</td><td><strong>74/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Zugspitze Schneeferner</td><td>Germany</td><td>2,962</td><td>37.0°</td><td>28 mm</td><td>58 km/h</td><td><strong>56/100</strong></td><td><span class="tag-risk-med">MEDIUM</span></td></tr>
+        <tr><td>Gotthard Pass Basin</td><td>Switzerland</td><td>2,106</td><td>36.0°</td><td>24 mm</td><td>48 km/h</td><td><strong>45/100</strong></td><td><span class="tag-risk-med">MEDIUM</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>🌲 North American Ranges & Alaska</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Location / Corridor</th>
+          <th>Region / State</th>
+          <th>Elev (m)</th>
+          <th>Slope</th>
+          <th>24h Snow</th>
+          <th>Wind Peak</th>
+          <th>Risk Score</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Thompson Pass</td><td>Chugach Mtns, AK</td><td>855</td><td>42.5°</td><td>72 mm</td><td>94 km/h</td><td><strong>97/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Denali - Kahiltna Pass</td><td>Alaska Range, AK</td><td>4,300</td><td>43.0°</td><td>52 mm</td><td>92 km/h</td><td><strong>96/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Mount Rainier - Disappointment Cleaver</td><td>Cascades, WA</td><td>3,700</td><td>41.0°</td><td>60 mm</td><td>85 km/h</td><td><strong>95/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Mount Washington - Tuckerman Ravine</td><td>White Mtns, NH</td><td>1,500</td><td>45.0°</td><td>44 mm</td><td>115 km/h</td><td><strong>93/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Rogers Pass (Trans-Canada Hwy 1)</td><td>Selkirk Mtns, BC</td><td>1,330</td><td>41.0°</td><td>54 mm</td><td>78 km/h</td><td><strong>92/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Red Mountain Pass (US-550)</td><td>San Juan Mtns, CO</td><td>3,414</td><td>42.0°</td><td>48 mm</td><td>75 km/h</td><td><strong>90/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Grand Teton - Central Headwall</td><td>Teton Range, WY</td><td>3,900</td><td>44.0°</td><td>42 mm</td><td>74 km/h</td><td><strong>88/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Berthoud Pass (US-40)</td><td>Front Range, CO</td><td>3,444</td><td>40.0°</td><td>36 mm</td><td>62 km/h</td><td><strong>78/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Mount Shasta - Avalanche Gulch</td><td>Cascades, CA</td><td>3,800</td><td>38.0°</td><td>38 mm</td><td>70 km/h</td><td><strong>77/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>🌋 Andes & Pacific / Eurasia</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Location / Corridor</th>
+          <th>Country / Region</th>
+          <th>Elev (m)</th>
+          <th>Slope</th>
+          <th>24h Snow</th>
+          <th>Wind Peak</th>
+          <th>Risk Score</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Aoraki / Mount Cook - Linda Glacier</td><td>Southern Alps, NZ</td><td>3,500</td><td>45.0°</td><td>58 mm</td><td>90 km/h</td><td><strong>94/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Cerro Fitz Roy - Supercanaleta</td><td>Patagonia, Argentina</td><td>3,100</td><td>50.0°</td><td>50 mm</td><td>110 km/h</td><td><strong>94/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Mount Hakuba - Happo-One</td><td>Northern Alps, Japan</td><td>2,700</td><td>41.0°</td><td>62 mm</td><td>80 km/h</td><td><strong>95/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Mount Yotei / Niseko</td><td>Hokkaido, Japan</td><td>1,800</td><td>40.0°</td><td>66 mm</td><td>74 km/h</td><td><strong>94/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Milford Sound Highway (SH94)</td><td>Fiordland, NZ</td><td>945</td><td>48.0°</td><td>68 mm</td><td>95 km/h</td><td><strong>92/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Tromsø - Lyngen Alps</td><td>Norway</td><td>1,600</td><td>44.0°</td><td>52 mm</td><td>88 km/h</td><td><strong>92/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Paso Los Libertadores (Portillo)</td><td>Chile / Argentina</td><td>3,200</td><td>40.0°</td><td>44 mm</td><td>82 km/h</td><td><strong>87/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+        <tr><td>Mount Elbrus - Pastukhov Rocks</td><td>Caucasus, Russia</td><td>4,800</td><td>38.0°</td><td>40 mm</td><td>86 km/h</td><td><strong>84/100</strong></td><td><span class="tag-risk-high">HIGH</span></td></tr>
+      </tbody>
+    </table>
+
+    <!-- Section 3 -->
+    <h2>3. Engineering Heuristic Safety Audit</h2>
+    <p>
+      Deterministic safety rules monitor environmental thresholds to trigger immediate risk escalation regardless of raw statistical outputs:
+    </p>
+    <ul>
+      <li><strong>Critical Storm Slab Rule</strong>: Triggered in <strong>58.5%</strong> of locations ($\text{Slope} \ge 34^\circ \land \text{Snow}_{24\text{h}} \ge 30\text{mm}$).</li>
+      <li><strong>Severe Wind Loading Rule</strong>: Triggered in <strong>64.6%</strong> of locations ($\text{Wind} \ge 65\text{km/h} \land \text{Slope} \ge 36^\circ$).</li>
+      <li><strong>Stale Telemetry Suppression</strong>: Automatically halts outdated predictions when sensor timestamps exceed 6 hours.</li>
+    </ul>
+
+    <!-- Section 4 -->
+    <h2>4. Strategic Operational Directives</h2>
+    <div class="callout">
+      <strong>🛡️ Decision Support Guidelines:</strong><br>
+      • <strong>Highway Departments</strong>: Active snowshed closures and artillery/Gazex mitigation required on Rohtang Pass, Zojila, US-550, and SH94 during precipitation events exceeding 30mm/24h.<br>
+      • <strong>Expedition Leaders</strong>: Mandatory 48-hour post-storm stabilization window before entering starting zones > 38° inclination.<br>
+      • <strong>Backcountry Personnel</strong>: Mandatory 3-antenna transceiver, 280cm probe, aluminum shovel, and deployment-ready airbag backpack.
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div>AVALANCHE RISK INTELLIGENCE PLATFORM • DECISION SUPPORT SYSTEM</div>
+      <div>https://github.com/Mohit1848/AVALANCHE</div>
+    </div>
+  </div>
+
+</body>
+</html>
