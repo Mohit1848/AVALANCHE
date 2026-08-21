@@ -3,7 +3,15 @@
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from api.dependencies import get_inference_engine
-from api.schemas import PointPredictionRequest, StationTelemetryBatchRequest, RiskPredictionResponse, ErrorResponse
+from api.schemas import (
+    PointPredictionRequest,
+    BatchPointPredictionRequest,
+    BatchPointPredictionResponse,
+    BatchPointPredictionItem,
+    StationTelemetryBatchRequest,
+    RiskPredictionResponse,
+    ErrorResponse,
+)
 from api.services.feature_service import enrich_point_features, process_telemetry_batch
 from api.services.inference_service import AvalancheInferenceEngine
 from ml.model_registry import ModelUnavailableError, DomainMismatchError
@@ -58,6 +66,65 @@ def predict_point_risk(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred while evaluating point avalanche risk: {str(exc)}"
         )
+
+
+@router.post(
+    "/predict/batch",
+    response_model=BatchPointPredictionResponse,
+    responses={
+        500: {"model": ErrorResponse, "description": "Batch prediction processing failure"},
+        503: {"model": ErrorResponse, "description": "Inference engine unavailable"}
+    }
+)
+def predict_batch_points(
+    request: BatchPointPredictionRequest,
+    engine: AvalancheInferenceEngine = Depends(get_inference_engine)
+):
+    """Batch evaluate avalanche risk for a list of mountain coordinates (e.g. uploaded CSV/JSON rows)."""
+    if not engine.is_healthy:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Inference engine is not healthy or model artifact could not be initialized."
+        )
+
+    results: List[BatchPointPredictionItem] = []
+    successful = 0
+    failed = 0
+
+    for idx, point in enumerate(request.points):
+        try:
+            feat_dict = enrich_point_features(point)
+            pred = engine.predict_risk(feat_dict)
+            results.append(
+                BatchPointPredictionItem(
+                    index=idx,
+                    location_id=point.location_id,
+                    latitude=point.latitude,
+                    longitude=point.longitude,
+                    prediction=pred,
+                    error=None
+                )
+            )
+            successful += 1
+        except Exception as exc:
+            results.append(
+                BatchPointPredictionItem(
+                    index=idx,
+                    location_id=point.location_id,
+                    latitude=point.latitude,
+                    longitude=point.longitude,
+                    prediction=None,
+                    error=str(exc)
+                )
+            )
+            failed += 1
+
+    return BatchPointPredictionResponse(
+        total=len(request.points),
+        successful=successful,
+        failed=failed,
+        results=results
+    )
 
 
 @router.post(

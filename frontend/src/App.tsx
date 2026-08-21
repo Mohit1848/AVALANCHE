@@ -1,18 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/common/Header';
-import { DisclaimerBanner } from './components/common/DisclaimerBanner';
 import { ColoradoMap } from './components/map/ColoradoMap';
 import { RiskAssessmentPanel } from './components/risk/RiskAssessmentPanel';
-import { IndianPeakPanel } from './components/india/IndianPeakPanel';
 import { TerrainPanel } from './components/terrain/TerrainPanel';
 import { SnowpackPanel } from './components/snowpack/SnowpackPanel';
 import { WeatherPanel } from './components/weather/WeatherPanel';
-import { TelemetrySimulationPanel } from './components/telemetry/TelemetrySimulationPanel';
-import { ModelResearchPage } from './components/model/ModelResearchPage';
-import { RiskHistoryTimeline } from './components/history/RiskHistoryTimeline';
-import { HistoricalPlaybackPanel } from './components/history/HistoricalPlaybackPanel';
-import { SpatialIntelligencePanel } from './components/spatial/SpatialIntelligencePanel';
-import { api } from './services/api';
+import { CustomDataStudio } from './components/custom/CustomDataStudio';
+import { SnowWeatherAnalytics } from './components/analytics/SnowWeatherAnalytics';
+import { SafetyAdvisoriesPanel } from './components/advisories/SafetyAdvisoriesPanel';
+import { api, parseCSV, SAMPLE_TEMPLATES } from './services/api';
 import type {
   HealthStatus,
   TelemetryFreshnessStatus,
@@ -20,45 +16,30 @@ import type {
   SnotelStation,
   HistoricalEvent,
   RiskPredictionResponse,
-  PersistedPredictionRecord,
-  ModelMetadata,
   SelectedLocationState,
   SpatialPredictionGridResponse,
-  ZoneRiskSummary,
-  SpatialValidationMetrics,
   LayerVisibilityState,
-  IndianPeak,
-  IndianRegion,
-  GeographicDomain,
-  PredictionContext,
+  EvaluatedPointRecord,
 } from './types';
-import { Layers, AlertCircle, Search, Mountain, ShieldAlert } from 'lucide-react';
+import { Layers, FileSpreadsheet, MapPin } from 'lucide-react';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'console' | 'spatial' | 'history' | 'playback' | 'research'>('console');
-  const [selectedDomain, setSelectedDomain] = useState<GeographicDomain>('COLORADO');
+  const [activeTab, setActiveTab] = useState<'console' | 'custom-data' | 'analytics' | 'advisories'>('console');
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [freshness, setFreshness] = useState<TelemetryFreshnessStatus | null>(null);
   const [zones, setZones] = useState<AvalancheZone[]>([]);
   const [stations, setStations] = useState<SnotelStation[]>([]);
   const [historicalEvents, setHistoricalEvents] = useState<HistoricalEvent[]>([]);
-  const [predictionsHistory, setPredictionsHistory] = useState<PersistedPredictionRecord[]>([]);
-  const [metadata, setMetadata] = useState<ModelMetadata | null>(null);
-  const [isLivePolling, setIsLivePolling] = useState<boolean>(true);
 
-  // Indian Himalayan Geography State
-  const [indianPeaks, setIndianPeaks] = useState<IndianPeak[]>([]);
-  const [indianRegions, setIndianRegions] = useState<IndianRegion[]>([]);
-  const [selectedIndianPeak, setSelectedIndianPeak] = useState<IndianPeak | null>(null);
-  const [peakSearchQuery, setPeakSearchQuery] = useState<string>('');
-  const [selectedStateFilter, setSelectedStateFilter] = useState<string>('ALL');
+  // Active CSV Dataset State (Powers the whole application)
+  const [activeCsvRecords, setActiveCsvRecords] = useState<EvaluatedPointRecord[]>([]);
+  const [activeCsvFilename, setActiveCsvFilename] = useState<string>('global_avalanche_mountains_master.csv');
+  const [selectedCsvIndex, setSelectedCsvIndex] = useState<number>(0);
+  const [regionFilter, setRegionFilter] = useState<'ALL' | 'HIMALAYAS' | 'ALPS' | 'AMERICAS' | 'PACIFIC'>('ALL');
 
-  // Phase 5 Spatial state
-  const [activeRiskSurface, setActiveRiskSurface] = useState<SpatialPredictionGridResponse | null>(null);
-  const [forecastZones, setForecastZones] = useState<ZoneRiskSummary[]>([]);
-  const [spatialValidation, setSpatialValidation] = useState<SpatialValidationMetrics | null>(null);
-  const [isLoadingSurface, setIsLoadingSurface] = useState<boolean>(false);
-  const [layerVisibility, setLayerVisibility] = useState<LayerVisibilityState>({
+  // Spatial & Layer state
+  const [activeRiskSurface] = useState<SpatialPredictionGridResponse | null>(null);
+  const [layerVisibility] = useState<LayerVisibilityState>({
     historicalEvents: true,
     snotelStations: true,
     forecastZones: true,
@@ -71,85 +52,44 @@ export function App() {
 
   // Map Filter state
   const [showHistoricalEvents, setShowHistoricalEvents] = useState<boolean>(true);
-  const [selectedSeason, setSelectedSeason] = useState<string>('ALL');
-  const [selectedTrigger, setSelectedTrigger] = useState<string>('ALL');
 
-  // Single Source of Truth Prediction Context
-  const [predictionContext, setPredictionContext] = useState<PredictionContext>({
-    target_id: '335',
-    target_name: 'SNOTEL 335: Berthoud Summit',
-    target_type: 'STATION',
+  // Selected Location / Query State
+  const [selectedLocation, setSelectedLocation] = useState<SelectedLocationState>({
+    type: 'COORDINATE',
+    name: 'Berthoud Pass Summit',
     latitude: 39.798,
     longitude: -105.778,
-    elevation: 3444,
-    slope: 36.0,
+    elevation: 3444.0,
+    slope: 40.0,
     aspect: 45.0,
-    temperature: null,
-    humidity: null,
-    pressure: null,
-    precipitation: null,
-    wind_speed_mean_24h: null,
-    wind_speed_max_24h: null,
-    snow_depth: null,
-    snow_water_equivalent: null,
-    snowfall_6h: null,
-    snowfall_24h: null,
-    snowfall_72h: null,
-    temperature_delta_24h: null,
-    temperature_delta_72h: null,
-    telemetry_timestamp: null,
-    telemetry_age_minutes: null,
-    data_quality: 'GOOD',
-    freshness_state: 'GOOD',
-    assessment_status: 'CURRENT',
-    prediction_available: true,
-    suppression_reason: null,
-    current_utc: new Date().toISOString(),
-    last_observation_timestamp: null,
-    telemetry_status: 'GOOD',
-    telemetry_source: 'SNOTEL Automated Telemetry (AWDB)',
-    terrain_source: 'Copernicus GLO-30 DEM (30m)',
-    prediction: null,
-    rules_evaluation: [],
-    isLoading: true,
-    error: null,
+    temperature: -5.5,
+    snow_depth: 165.0,
+    snow_water_equivalent: 280.0,
+    snowfall_6h: 8.0,
+    snowfall_24h: 36.0,
+    snowfall_72h: 58.0,
+    temperature_delta_24h: -3.0,
+    wind_speed_mean_24h: 32.0,
+    wind_speed_max_24h: 62.0,
+    telemetry_age_minutes: 12,
   });
 
-  // Request sequence and abort controller for race-condition safety
-  const activeRequestIdRef = useRef<number>(0);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Active ML Prediction State
+  const [prediction, setPrediction] = useState<RiskPredictionResponse | null>(null);
+  const [isLoadingPrediction, setIsLoadingPrediction] = useState<boolean>(false);
 
-  const toggleLayer = (layerKey: keyof LayerVisibilityState) => {
-    setLayerVisibility((prev) => ({ ...prev, [layerKey]: !prev[layerKey] }));
-  };
-
-  // 1. Initial Load of Health, Freshness, Zones, Stations, Events, History, and Indian Geography
+  // 1. Initial Load of Health, Freshness, Stations, and Events
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [hRes, fRes, mRes, histRes, zRes, sValRes, peaksRes, regionsRes] = await Promise.all([
+        const [hRes, fRes] = await Promise.all([
           api.getHealth(),
           api.getTelemetryFreshness(),
-          api.getModelMetadata(),
-          api.getPredictionHistory(),
-          api.getForecastZones(),
-          api.getSpatialValidation(),
-          api.getIndianPeaks(),
-          api.getIndianRegions(),
         ]);
         setHealth(hRes);
         setFreshness(fRes);
-        setMetadata(mRes);
-        setPredictionsHistory(histRes);
-        setForecastZones(zRes);
-        setSpatialValidation(sValRes);
-        setIndianPeaks(peaksRes.peaks);
-        setIndianRegions(regionsRes.regions);
 
-        if (peaksRes.peaks.length > 0) {
-          setSelectedIndianPeak(peaksRes.peaks[0]);
-        }
-
+        // Standard Colorado Avalanche Zones and Stations for Map
         setZones([
           { zone_id: 'CO_FRONT_RANGE', name: 'Front Range', center_latitude: 39.750, center_longitude: -105.800, elevation_range_m: '2,400m – 4,350m', primary_snotel_stations: ['335', '586'] },
           { zone_id: 'CO_VAIL_SUMMIT', name: 'Vail & Summit County', center_latitude: 39.550, center_longitude: -106.050, elevation_range_m: '2,500m – 4,300m', primary_snotel_stations: ['505', '531', '415'] },
@@ -184,659 +124,432 @@ export function App() {
     fetchInitialData();
   }, []);
 
-  // 2. Live Polling Effect (every 30s)
+  // 2. Initial evaluation of default CSV dataset so app starts with real CSV-powered mountain data
   useEffect(() => {
-    if (!isLivePolling) return;
-    const interval = setInterval(async () => {
+    const initDefaultCsv = async () => {
       try {
-        const [hRes, fRes, histRes] = await Promise.all([
-          api.getHealth(),
-          api.getTelemetryFreshness(),
-          api.getPredictionHistory(),
-        ]);
-        setHealth(hRes);
-        setFreshness(fRes);
-        setPredictionsHistory(histRes);
+        const csvResult = parseCSV(SAMPLE_TEMPLATES.global_mountains_csv);
+        if (csvResult.data.length > 0) {
+          const batchResp = await api.predictBatch(csvResult.data);
+          const records: EvaluatedPointRecord[] = csvResult.data.map((pt, idx) => {
+            const resItem = batchResp.results.find((r) => r.index === idx);
+            return {
+              id: `CSV_${idx + 1}`,
+              index: idx + 1,
+              location_id: pt.location_id || `CSV Row #${idx + 1}`,
+              latitude: pt.latitude,
+              longitude: pt.longitude,
+              elevation: pt.elevation ?? 3400,
+              slope: pt.slope ?? 36,
+              aspect: pt.aspect ?? 45,
+              temperature: pt.temperature ?? -5,
+              humidity: pt.humidity,
+              pressure: pt.pressure,
+              snow_depth: pt.snow_depth ?? 120,
+              snow_water_equivalent: pt.snow_water_equivalent ?? 200,
+              snowfall_6h: pt.snowfall_6h ?? 0,
+              snowfall_24h: pt.snowfall_24h ?? 15,
+              snowfall_72h: pt.snowfall_72h ?? 35,
+              wind_speed_mean_24h: pt.wind_speed_mean_24h ?? 20,
+              wind_speed_max_24h: pt.wind_speed_max_24h ?? 40,
+              prediction: resItem?.prediction || undefined,
+              status: resItem?.error ? 'ERROR' : 'SUCCESS',
+              errorMessage: resItem?.error || undefined,
+            };
+          });
+          setActiveCsvRecords(records);
+          if (records.length > 0) {
+            const first = records[0];
+            setSelectedLocation({
+              type: 'COORDINATE',
+              name: first.location_id,
+              latitude: first.latitude,
+              longitude: first.longitude,
+              elevation: first.elevation,
+              slope: first.slope,
+              aspect: first.aspect,
+              temperature: first.temperature,
+              snow_depth: first.snow_depth ?? 120,
+              snow_water_equivalent: first.snow_water_equivalent ?? 200,
+              snowfall_6h: first.snowfall_6h ?? 0,
+              snowfall_24h: first.snowfall_24h ?? 15,
+              snowfall_72h: first.snowfall_72h ?? 35,
+              temperature_delta_24h: first.temperature_delta_24h ?? 0,
+              wind_speed_mean_24h: first.wind_speed_mean_24h ?? 20,
+              wind_speed_max_24h: first.wind_speed_max_24h ?? 40,
+              telemetry_age_minutes: 0,
+            });
+            if (first.prediction) {
+              setPrediction(first.prediction);
+            }
+          }
+        }
       } catch (err) {
-        console.warn('Live polling warning:', err);
+        console.warn('Initial CSV evaluation warning:', err);
       }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [isLivePolling]);
+    };
+    initDefaultCsv();
+  }, []);
 
-  // 3. Load Authoritative Station Assessment (Single Source of Truth)
-  const loadStationAssessment = async (
-    stationId: string,
-    name: string,
-    lat: number,
-    lon: number,
-    elev: number,
-    slope: number = 36.0,
-    aspect: number = 45.0
-  ) => {
-    if (selectedDomain === 'INDIA') return;
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    const reqId = ++activeRequestIdRef.current;
-
-    // Immediately set into clean loading state with cleared previous prediction
-    setPredictionContext((prev) => ({
-      ...prev,
-      target_id: stationId,
-      target_name: `SNOTEL ${stationId}: ${name}`,
-      target_type: 'STATION',
-      latitude: lat,
-      longitude: lon,
-      elevation: elev,
-      slope,
-      aspect,
-      isLoading: true,
-      error: null,
-      prediction: null,
-      rules_evaluation: [],
-    }));
-
-    try {
-      const res = await api.getStationAssessment(stationId, slope, aspect, controller.signal);
-      if (activeRequestIdRef.current !== reqId) return;
-
-      setPredictionContext({
-        target_id: stationId,
-        target_name: `SNOTEL ${stationId}: ${res.station_name || name}`,
-        target_type: 'STATION',
-        latitude: res.latitude ?? lat,
-        longitude: res.longitude ?? lon,
-        elevation: res.elevation ?? elev,
-        slope: res.slope ?? slope,
-        aspect: res.aspect ?? aspect,
-        temperature: res.features?.temperature ?? null,
-        humidity: res.features?.humidity ?? null,
-        pressure: res.features?.pressure ?? null,
-        precipitation: res.features?.precipitation ?? null,
-        wind_speed_mean_24h: res.features?.wind_speed_mean_24h ?? null,
-        wind_speed_max_24h: res.features?.wind_speed_max_24h ?? null,
-        snow_depth: res.features?.snow_depth ?? null,
-        snow_water_equivalent: res.features?.snow_water_equivalent ?? null,
-        snowfall_6h: res.features?.snowfall_6h ?? null,
-        snowfall_24h: res.features?.snowfall_24h ?? null,
-        snowfall_72h: res.features?.snowfall_72h ?? null,
-        temperature_delta_24h: res.features?.temperature_delta_24h ?? null,
-        temperature_delta_72h: res.features?.temperature_delta_72h ?? null,
-        telemetry_timestamp: res.telemetry_timestamp || res.last_observation_timestamp,
-        telemetry_age_minutes: res.telemetry_age_minutes,
-        data_quality: res.data_quality || res.telemetry_status || 'GOOD',
-        freshness_state: res.freshness_state || res.telemetry_status || 'GOOD',
-        assessment_status: res.assessment_status || (res.telemetry_status === 'STALE' ? 'SUPPRESSED' : 'CURRENT'),
-        prediction_available: res.prediction_available ?? (res.telemetry_status !== 'STALE'),
-        suppression_reason: res.suppression_reason,
-        current_utc: res.current_utc || new Date().toISOString(),
-        last_observation_timestamp: res.last_observation_timestamp || res.telemetry_timestamp,
-        telemetry_status: res.telemetry_status || 'GOOD',
-        telemetry_source: 'SNOTEL Automated Telemetry (AWDB)',
-        terrain_source: 'Copernicus GLO-30 DEM (30m)',
-        prediction: res.prediction,
-        rules_evaluation: res.rules_evaluation || res.prediction?.rule_evaluations || [],
-        isLoading: false,
-        error: null,
-      });
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
-      if (activeRequestIdRef.current !== reqId) return;
-      console.error(`Failed to load assessment for station ${stationId}:`, err);
-      setPredictionContext((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: err.message || `Failed to retrieve assessment for station ${stationId}`,
-      }));
-    }
-  };
-
-  // 4. Load Custom Point / Zone Assessment
-  const evaluateCustomPointRisk = async (
-    targetName: string,
-    lat: number,
-    lon: number,
-    elev: number = 3450.0,
-    slope: number = 36.0,
-    aspect: number = 45.0,
-    type: 'COORDINATE' | 'ZONE' = 'COORDINATE'
-  ) => {
-    if (selectedDomain === 'INDIA') return;
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    const reqId = ++activeRequestIdRef.current;
-
-    setPredictionContext((prev) => ({
-      ...prev,
-      target_id: `${lat.toFixed(3)},${lon.toFixed(3)}`,
-      target_name: targetName,
-      target_type: type,
-      latitude: lat,
-      longitude: lon,
-      elevation: elev,
-      slope,
-      aspect,
-      isLoading: true,
-      error: null,
-      prediction: null,
-      rules_evaluation: [],
-    }));
-
+  // 3. Evaluate Risk for Selected Location
+  const evaluateLocationRisk = async (loc: SelectedLocationState) => {
+    setIsLoadingPrediction(true);
     try {
       const pred = await api.predictPoint({
-        latitude: lat,
-        longitude: lon,
-        elevation: elev,
-        slope,
-        aspect,
-        location_id: targetName,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        elevation: loc.elevation,
+        slope: loc.slope,
+        aspect: loc.aspect,
+        temperature: loc.temperature,
+        snow_depth: loc.snow_depth,
+        snow_water_equivalent: loc.snow_water_equivalent,
+        snowfall_6h: loc.snowfall_6h,
+        snowfall_24h: loc.snowfall_24h,
+        snowfall_72h: loc.snowfall_72h,
+        temperature_delta_24h: loc.temperature_delta_24h,
+        wind_speed_mean_24h: loc.wind_speed_mean_24h,
+        wind_speed_max_24h: loc.wind_speed_max_24h,
+        location_id: loc.name,
       });
-
-      if (activeRequestIdRef.current !== reqId) return;
-
-      const ageMin = freshness?.age_minutes ?? null;
-      const status = freshness?.overall_status || 'GOOD';
-
-      setPredictionContext({
-        target_id: `${lat.toFixed(3)},${lon.toFixed(3)}`,
-        target_name: targetName,
-        target_type: type,
-        latitude: lat,
-        longitude: lon,
-        elevation: elev,
-        slope,
-        aspect,
-        temperature: pred.features?.temperature ?? null,
-        humidity: pred.features?.humidity ?? null,
-        pressure: pred.features?.pressure ?? null,
-        precipitation: pred.features?.precipitation ?? null,
-        wind_speed_mean_24h: pred.features?.wind_speed_mean_24h ?? null,
-        wind_speed_max_24h: pred.features?.wind_speed_max_24h ?? null,
-        snow_depth: pred.features?.snow_depth ?? null,
-        snow_water_equivalent: pred.features?.snow_water_equivalent ?? null,
-        snowfall_6h: pred.features?.snowfall_6h ?? null,
-        snowfall_24h: pred.features?.snowfall_24h ?? null,
-        snowfall_72h: pred.features?.snowfall_72h ?? null,
-        temperature_delta_24h: pred.features?.temperature_delta_24h ?? null,
-        temperature_delta_72h: pred.features?.temperature_delta_72h ?? null,
-        telemetry_timestamp: freshness?.last_update || null,
-        telemetry_age_minutes: ageMin,
-        data_quality: pred.data_quality || status,
-        freshness_state: status,
-        assessment_status: status === 'STALE' ? 'SUPPRESSED' : 'CURRENT',
-        prediction_available: status !== 'STALE',
-        suppression_reason: status === 'STALE' ? 'Telemetry is stale (>6h)' : null,
-        current_utc: new Date().toISOString(),
-        last_observation_timestamp: freshness?.last_update || null,
-        telemetry_status: status,
-        telemetry_source: 'SNOTEL Regional Spatial Interpolation',
-        terrain_source: 'Copernicus GLO-30 DEM (30m)',
-        prediction: pred,
-        rules_evaluation: pred.rule_evaluations || [],
-        isLoading: false,
-        error: null,
-      });
+      setPrediction(pred);
     } catch (err: any) {
-      if (err.name === 'AbortError') return;
-      if (activeRequestIdRef.current !== reqId) return;
-      console.error('Point prediction query error:', err);
-      setPredictionContext((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: err.message || 'Failed to communicate with prediction service.',
-      }));
+      console.error('Prediction query error:', err);
+    } finally {
+      setIsLoadingPrediction(false);
     }
   };
 
-  // Initial assessment load on Colorado startup
+  // Run initial prediction on default location
   useEffect(() => {
-    if (selectedDomain === 'COLORADO') {
-      loadStationAssessment('335', 'Berthoud Summit', 39.798, -105.778, 3444);
+    evaluateLocationRisk(selectedLocation);
+  }, []);
+
+  const selectCsvRecordByIndex = (records: EvaluatedPointRecord[], index: number) => {
+    if (!records || records.length === 0) return;
+    const clampedIndex = Math.max(0, Math.min(index, records.length - 1));
+    setSelectedCsvIndex(clampedIndex);
+    const rec = records[clampedIndex];
+    if (rec) {
+      const locState: SelectedLocationState = {
+        type: 'COORDINATE',
+        name: rec.location_id,
+        latitude: rec.latitude,
+        longitude: rec.longitude,
+        elevation: rec.elevation,
+        slope: rec.slope,
+        aspect: rec.aspect,
+        temperature: rec.temperature,
+        snow_depth: rec.snow_depth ?? 120,
+        snow_water_equivalent: rec.snow_water_equivalent ?? 200,
+        snowfall_6h: rec.snowfall_6h ?? 0,
+        snowfall_24h: rec.snowfall_24h ?? 15,
+        snowfall_72h: rec.snowfall_72h ?? 35,
+        temperature_delta_24h: rec.temperature_delta_24h ?? 0,
+        wind_speed_mean_24h: rec.wind_speed_mean_24h ?? 20,
+        wind_speed_max_24h: rec.wind_speed_max_24h ?? 40,
+        telemetry_age_minutes: 0,
+      };
+      setSelectedLocation(locState);
+      if (rec.prediction) {
+        setPrediction(rec.prediction);
+      } else {
+        evaluateLocationRisk(locState);
+      }
     }
-  }, [selectedDomain]);
+  };
 
   const handleSelectLocation = (loc: SelectedLocationState) => {
-    if (loc.type === 'STATION') {
-      // Find matching station ID if present in name or coords
-      const matchedStation = stations.find(
-        (s) => Math.abs(s.latitude - loc.latitude) < 0.01 && Math.abs(s.longitude - loc.longitude) < 0.01
-      );
-      if (matchedStation) {
-        loadStationAssessment(matchedStation.station_id, matchedStation.name, matchedStation.latitude, matchedStation.longitude, matchedStation.elevation, loc.slope, loc.aspect);
-        return;
+    setSelectedLocation(loc);
+    evaluateLocationRisk(loc);
+  };
+
+  const isRecordInRegion = (r: EvaluatedPointRecord, reg: string) => {
+    if (reg === 'ALL') return true;
+    const lat = r.latitude;
+    const lon = r.longitude;
+    if (reg === 'HIMALAYAS') return lat >= 20 && lat <= 40 && lon >= 68 && lon <= 100;
+    if (reg === 'ALPS') return lat >= 42 && lat <= 49 && lon >= 4 && lon <= 17;
+    if (reg === 'AMERICAS') return (lat >= 30 && lat <= 70 && lon >= -170 && lon <= -60) || (lat >= -56 && lat <= 15 && lon >= -82 && lon <= -60);
+    if (reg === 'PACIFIC') return (lat >= -48 && lat <= -34 && lon >= 165 && lon <= 179) || (lat >= 30 && lat <= 46 && lon >= 128 && lon <= 146) || (lat >= 40 && lat <= 45 && lon >= 38 && lon <= 50) || (lat >= 58 && lat <= 72 && lon >= 5 && lon <= 30);
+    return true;
+  };
+
+  const filteredNavRecords = activeCsvRecords.filter((r) => isRecordInRegion(r, regionFilter));
+
+  const handleRegionChange = (newReg: 'ALL' | 'HIMALAYAS' | 'ALPS' | 'AMERICAS' | 'PACIFIC') => {
+    setRegionFilter(newReg);
+    const subset = activeCsvRecords.filter((r) => isRecordInRegion(r, newReg));
+    if (subset.length > 0) {
+      const firstIndex = activeCsvRecords.findIndex((r) => r.id === subset[0].id);
+      if (firstIndex >= 0) {
+        selectCsvRecordByIndex(activeCsvRecords, firstIndex);
       }
-    }
-    evaluateCustomPointRisk(loc.name, loc.latitude, loc.longitude, loc.elevation, loc.slope, loc.aspect, loc.type === 'ZONE' ? 'ZONE' : 'COORDINATE');
-  };
-
-  const handleSelectStation = (stationId: string, name: string, lat: number, lon: number, elev: number) => {
-    loadStationAssessment(stationId, name, lat, lon, elev, 36.0, 45.0);
-  };
-
-  const handleTelemetryPrediction = (pred: RiskPredictionResponse) => {
-    setPredictionContext((prev) => ({
-      ...prev,
-      prediction: pred,
-      rules_evaluation: pred.rule_evaluations || prev.rules_evaluation,
-    }));
-  };
-
-  const handleGenerateRiskSurface = async (params: {
-    min_latitude: number;
-    max_latitude: number;
-    min_longitude: number;
-    max_longitude: number;
-    grid_spacing_degrees: number;
-    search_radius_km: number;
-    power: number;
-  }) => {
-    setIsLoadingSurface(true);
-    try {
-      const surf = await api.predictSpatialGrid(params);
-      setActiveRiskSurface(surf);
-      setLayerVisibility((prev) => ({ ...prev, riskSurface: true }));
-    } catch (err) {
-      console.error('Failed to generate spatial risk surface:', err);
-    } finally {
-      setIsLoadingSurface(false);
-    }
-  };
-
-  // Filtered Indian peaks based on search and state filter
-  const filteredIndianPeaks = indianPeaks.filter((p) => {
-    const matchesSearch = peakSearchQuery.trim() === '' ||
-      p.name.toLowerCase().includes(peakSearchQuery.toLowerCase()) ||
-      p.region.toLowerCase().includes(peakSearchQuery.toLowerCase()) ||
-      p.mountain_range.toLowerCase().includes(peakSearchQuery.toLowerCase());
-    const matchesState = selectedStateFilter === 'ALL' || p.state === selectedStateFilter;
-    return matchesSearch && matchesState;
-  });
-
-  // Location state for map centering/active point
-  const mapSelectedLocation: SelectedLocationState = {
-    type: predictionContext.target_type === 'STATION' ? 'STATION' : predictionContext.target_type === 'ZONE' ? 'ZONE' : 'COORDINATE',
-    name: predictionContext.target_name,
-    latitude: predictionContext.latitude,
-    longitude: predictionContext.longitude,
-    elevation: predictionContext.elevation,
-    slope: predictionContext.slope,
-    aspect: predictionContext.aspect,
-    temperature: predictionContext.temperature ?? 0,
-    snow_depth: predictionContext.snow_depth ?? 0,
-    snow_water_equivalent: predictionContext.snow_water_equivalent ?? 0,
-    snowfall_6h: predictionContext.snowfall_6h ?? 0,
-    snowfall_24h: predictionContext.snowfall_24h ?? 0,
-    snowfall_72h: predictionContext.snowfall_72h ?? 0,
-    temperature_delta_24h: predictionContext.temperature_delta_24h ?? 0,
-    wind_speed_mean_24h: predictionContext.wind_speed_mean_24h ?? 0,
-    wind_speed_max_24h: predictionContext.wind_speed_max_24h ?? 0,
-    telemetry_age_minutes: predictionContext.telemetry_age_minutes ?? undefined,
-  };
-
-  const [isSyncingTelemetry, setIsSyncingTelemetry] = useState<boolean>(false);
-
-  const handleSyncColoradoTelemetry = async () => {
-    setIsSyncingTelemetry(true);
-    try {
-      await api.syncColoradoTelemetry();
-      const [hRes, fRes] = await Promise.all([
-        api.getHealth(),
-        api.getTelemetryFreshness(),
-      ]);
-      setHealth(hRes);
-      setFreshness(fRes);
-      if (predictionContext.target_type === 'STATION' && predictionContext.target_id) {
-        loadStationAssessment(
-          predictionContext.target_id,
-          predictionContext.target_name,
-          predictionContext.latitude,
-          predictionContext.longitude,
-          predictionContext.elevation,
-          predictionContext.slope,
-          predictionContext.aspect
-        );
-      }
-    } catch (err) {
-      console.error('Colorado telemetry sync error:', err);
-    } finally {
-      setIsSyncingTelemetry(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* 1. Header & Diagnostics */}
+      {/* 1. Real-World Clean Brand Header */}
       <Header
         health={health}
         freshness={freshness}
-        context={predictionContext}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        isLivePolling={isLivePolling}
-        setIsLivePolling={setIsLivePolling}
-        selectedDomain={selectedDomain}
-        setSelectedDomain={setSelectedDomain}
-        onSync={handleSyncColoradoTelemetry}
-        isSyncing={isSyncingTelemetry}
+        activePassCount={activeCsvRecords.length}
       />
 
-      {/* 2. Research Disclaimer Banner */}
-      <DisclaimerBanner />
-
-      {/* 3. API Disconnected Warning */}
-      {health?.status === 'error' && (
-        <div className="bg-red-950 border-b border-red-800 p-3 text-red-200 text-xs flex items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-red-400" />
-            <span>
-              <strong>INFERENCE SERVICE NOTICE:</strong> Backend at http://localhost:8000 is currently unreachable.
-            </span>
-          </div>
-          <span className="font-mono bg-red-900 px-2 py-0.5 rounded text-[10px]">HTTP 503</span>
-        </div>
-      )}
-
-      {/* 4. Tab Routing */}
-      {activeTab === 'research' ? (
-        <main className="flex-1 p-3.5 sm:p-4 min-w-0">
-          <ModelResearchPage metadata={metadata} />
-        </main>
-      ) : activeTab === 'spatial' ? (
-        <main className="flex-1 p-3.5 sm:p-4 space-y-4 max-w-[1600px] mx-auto w-full min-w-0">
-          <SpatialIntelligencePanel
-            onGenerateRiskSurface={handleGenerateRiskSurface}
-            isLoadingSurface={isLoadingSurface}
-            activeRiskSurface={activeRiskSurface}
-            forecastZones={forecastZones}
-            spatialValidation={spatialValidation}
-            layerVisibility={layerVisibility}
-            onToggleLayer={toggleLayer}
-            mapSlot={
-              <ColoradoMap
-                zones={zones}
-                stations={stations}
-                historicalEvents={historicalEvents}
-                selectedLocation={mapSelectedLocation}
-                onSelectLocation={handleSelectLocation}
-                onSelectStation={handleSelectStation}
-                showEvents={showHistoricalEvents}
-                activeRiskLevel={predictionContext.prediction?.final_risk_level}
-                isLiveMode={isLivePolling}
-                layerVisibility={layerVisibility}
-                riskSurface={activeRiskSurface}
-                selectedDomain={selectedDomain}
-                indianPeaks={filteredIndianPeaks}
-                selectedIndianPeak={selectedIndianPeak}
-                onSelectIndianPeak={(peak) => setSelectedIndianPeak(peak)}
-                freshness={freshness}
-                context={predictionContext}
-              />
-            }
+      {/* 2. Main Operational Views */}
+      {activeTab === 'custom-data' ? (
+        <main className="flex-1 p-3.5 sm:p-5 min-w-0">
+          <CustomDataStudio
+            activeCsvRecords={activeCsvRecords}
+            activeCsvFilename={activeCsvFilename}
+            onSetActiveCsvDataset={(records, filename) => {
+              setActiveCsvRecords(records);
+              setActiveCsvFilename(filename);
+              if (records.length > 0) {
+                selectCsvRecordByIndex(records, 0);
+              }
+            }}
+            onApplyLocationToConsole={(loc) => {
+              handleSelectLocation(loc);
+              setActiveTab('console');
+            }}
+            onNavigateToConsole={() => setActiveTab('console')}
           />
         </main>
-      ) : activeTab === 'history' ? (
-        <main className="flex-1 p-3.5 sm:p-4 min-w-0">
-          <RiskHistoryTimeline predictions={predictionsHistory} />
+      ) : activeTab === 'analytics' ? (
+        <main className="flex-1 p-3.5 sm:p-5 min-w-0">
+          <SnowWeatherAnalytics
+            records={activeCsvRecords}
+            activeCsvFilename={activeCsvFilename}
+            onSelectLocation={(loc) => {
+              handleSelectLocation(loc);
+              setActiveTab('console');
+            }}
+            onNavigateToConsole={() => setActiveTab('console')}
+          />
         </main>
-      ) : activeTab === 'playback' ? (
-        <main className="flex-1 p-3.5 sm:p-4 min-w-0">
-          <HistoricalPlaybackPanel />
+      ) : activeTab === 'advisories' ? (
+        <main className="flex-1 p-3.5 sm:p-5 min-w-0">
+          <SafetyAdvisoriesPanel
+            records={activeCsvRecords}
+            activeCsvFilename={activeCsvFilename}
+            onSelectLocation={(loc) => {
+              handleSelectLocation(loc);
+              setActiveTab('console');
+            }}
+            onNavigateToConsole={() => setActiveTab('console')}
+          />
         </main>
       ) : (
-        <main className="flex-1 p-3.5 sm:p-4 space-y-4 max-w-[1600px] mx-auto w-full min-w-0">
-          {/* Main Top Split Grid: GIS Map (Left) + Selected Location / Peak Panel (Right) */}
+        /* OPERATIONS CONSOLE */
+        <main className="flex-1 p-3.5 sm:p-5 space-y-4 max-w-[1600px] mx-auto w-full min-w-0">
+          {/* Active Mountain Pass Navigator Bar */}
+          {activeCsvRecords.length > 0 && (
+            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-800/60 rounded-xl p-3 flex flex-col gap-2.5 text-xs shadow-lg">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="bg-emerald-950 p-2 rounded-xl border border-emerald-700 text-emerald-400 shrink-0 shadow-sm">
+                    <FileSpreadsheet className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">OPERATIONAL DATASET:</span>
+                      <strong className="text-emerald-300 text-xs font-mono truncate">{activeCsvFilename}</strong>
+                      <span className="text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full shrink-0">
+                        {activeCsvRecords.length} Global Mountains Loaded
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pass Quick Chips & Controls */}
+                <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
+                  <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-0.5">
+                    <button
+                      onClick={() => selectCsvRecordByIndex(activeCsvRecords, selectedCsvIndex - 1)}
+                      disabled={selectedCsvIndex <= 0}
+                      className="px-2.5 py-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer font-bold transition-all"
+                      title="Previous mountain"
+                    >
+                      &larr; Prev
+                    </button>
+                    <span className="px-2.5 text-emerald-400 font-bold border-x border-slate-800">
+                      {selectedCsvIndex + 1} / {activeCsvRecords.length}
+                    </span>
+                    <button
+                      onClick={() => selectCsvRecordByIndex(activeCsvRecords, selectedCsvIndex + 1)}
+                      disabled={selectedCsvIndex >= activeCsvRecords.length - 1}
+                      className="px-2.5 py-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer font-bold transition-all"
+                      title="Next mountain"
+                    >
+                      Next &rarr;
+                    </button>
+                  </div>
+
+                  <select
+                    value={selectedCsvIndex}
+                    onChange={(e) => selectCsvRecordByIndex(activeCsvRecords, parseInt(e.target.value, 10))}
+                    className="bg-slate-950 border border-emerald-700/80 text-emerald-300 font-bold rounded-lg px-3 py-1 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[320px] truncate shadow-inner"
+                    aria-label="Select Mountain Location"
+                  >
+                    {filteredNavRecords.map((r) => {
+                      const actualIdx = activeCsvRecords.findIndex((item) => item.id === r.id);
+                      return (
+                        <option key={r.id} value={actualIdx}>
+                          {actualIdx + 1}. {r.location_id} ({r.prediction?.final_risk_level ?? 'CALC'})
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  <button
+                    onClick={() => setActiveTab('custom-data')}
+                    className="bg-emerald-950 hover:bg-emerald-900 border border-emerald-700 text-emerald-200 px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer shrink-0 transition-all shadow-sm"
+                  >
+                    Upload / Presets
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Continent Filter Bar */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-800/80 text-[11px] font-mono">
+                <span className="text-[10px] text-slate-400 uppercase font-bold shrink-0">FILTER CONTINENT:</span>
+                <button
+                  onClick={() => handleRegionChange('ALL')}
+                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
+                    regionFilter === 'ALL'
+                      ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                      : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                  }`}
+                >
+                  🌍 All ({activeCsvRecords.length})
+                </button>
+                <button
+                  onClick={() => handleRegionChange('HIMALAYAS')}
+                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
+                    regionFilter === 'HIMALAYAS'
+                      ? 'bg-amber-600 text-white font-bold shadow-sm'
+                      : 'bg-slate-950 text-amber-400 hover:text-amber-200 border border-amber-900/60'
+                  }`}
+                >
+                  🏔️ Himalayas & Asia
+                </button>
+                <button
+                  onClick={() => handleRegionChange('ALPS')}
+                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
+                    regionFilter === 'ALPS'
+                      ? 'bg-cyan-600 text-white font-bold shadow-sm'
+                      : 'bg-slate-950 text-cyan-400 hover:text-cyan-200 border border-cyan-900/60'
+                  }`}
+                >
+                  ⛷️ European Alps
+                </button>
+                <button
+                  onClick={() => handleRegionChange('AMERICAS')}
+                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
+                    regionFilter === 'AMERICAS'
+                      ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                      : 'bg-slate-950 text-emerald-400 hover:text-emerald-200 border border-emerald-900/60'
+                  }`}
+                >
+                  🌲 Americas (Rockies & Andes)
+                </button>
+                <button
+                  onClick={() => handleRegionChange('PACIFIC')}
+                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
+                    regionFilter === 'PACIFIC'
+                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
+                      : 'bg-slate-950 text-indigo-400 hover:text-indigo-200 border border-indigo-900/60'
+                  }`}
+                >
+                  🗾 Japan, NZ & Scandinavia
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Main Operational Split Grid: GIS Map (Left) + Risk Intelligence Card (Right) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start min-w-0">
-            {/* LEFT / MAIN (7 Cols): Interactive GIS Map & Layer Controls */}
+            {/* LEFT (7 Cols): Interactive Topographic GIS Map */}
             <div className="lg:col-span-7 flex flex-col space-y-2.5 min-w-0 w-full">
               {/* Map Layer Toolbar */}
               <div className="bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs min-w-0">
-                {selectedDomain === 'INDIA' ? (
-                  /* Indian Himalayan Peak Search & State Filter Toolbar */
-                  <div className="flex flex-wrap items-center gap-2.5 w-full min-w-0">
-                    <div className="flex items-center gap-1.5 text-amber-400 font-bold shrink-0">
-                      <Search className="w-4 h-4" />
-                      <span className="text-xs font-mono uppercase">Search Peak:</span>
-                    </div>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Layers className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <span className="font-bold text-slate-200 shrink-0">Map Controls:</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer ml-1 text-slate-300 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={showHistoricalEvents}
+                      onChange={(e) => setShowHistoricalEvents(e.target.checked)}
+                      className="rounded bg-slate-800 border-slate-700 text-cyan-500"
+                    />
+                    <span className="truncate">Historical Avalanche Events</span>
+                  </label>
+                </div>
 
-                    <div className="relative flex-1 min-w-[180px]">
-                      <input
-                        type="text"
-                        value={peakSearchQuery}
-                        onChange={(e) => setPeakSearchQuery(e.target.value)}
-                        placeholder="Search mountain / peak (e.g. Nanda Devi, Kamet, Kangchenjunga)..."
-                        className="w-full bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-1.5 text-xs placeholder-slate-500 focus:outline-none focus:border-amber-500 font-sans"
-                        aria-label="Search mountain or peak"
-                      />
-                    </div>
-
-                    <select
-                      value={selectedStateFilter}
-                      onChange={(e) => setSelectedStateFilter(e.target.value)}
-                      className="bg-slate-950 border border-slate-700 text-amber-300 font-semibold rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-amber-500 shrink-0"
-                      aria-label="Filter peaks by State"
-                    >
-                      <option value="ALL">All States ({indianPeaks.length} Peaks)</option>
-                      <option value="Uttarakhand">Uttarakhand (6)</option>
-                      <option value="Ladakh">Ladakh (5)</option>
-                      <option value="Himachal Pradesh">Himachal Pradesh (3)</option>
-                      <option value="Sikkim">Sikkim (5)</option>
-                    </select>
-
-                    <div className="text-[11px] font-mono text-slate-400 shrink-0">
-                      Showing: <strong className="text-amber-300">{filteredIndianPeaks.length}</strong> peaks
-                    </div>
-                  </div>
-                ) : (
-                  /* Colorado GIS Layer Toolbar */
-                  <>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Layers className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <span className="font-bold text-slate-200 shrink-0">GIS Layers:</span>
-                      <label className="flex items-center gap-1.5 cursor-pointer ml-1 text-slate-300 text-xs">
-                        <input
-                          type="checkbox"
-                          checked={showHistoricalEvents}
-                          onChange={(e) => setShowHistoricalEvents(e.target.checked)}
-                          className="rounded bg-slate-800 border-slate-700 text-cyan-500"
-                        />
-                        <span className="truncate">CAIC Historical Events</span>
-                      </label>
-                    </div>
-
-                    {showHistoricalEvents && (
-                      <div className="flex items-center gap-2 font-mono text-[11px]">
-                        <select
-                          value={selectedSeason}
-                          onChange={(e) => setSelectedSeason(e.target.value)}
-                          className="bg-slate-950 border border-slate-700 text-slate-300 rounded px-2 py-1"
-                        >
-                          <option value="ALL">All Seasons (2015–24)</option>
-                          <option value="2023-2024">2023–2024</option>
-                          <option value="2022-2023">2022–2023</option>
-                          <option value="2021-2022">2021–2022</option>
-                          <option value="2020-2021">2020–2021</option>
-                        </select>
-
-                        <select
-                          value={selectedTrigger}
-                          onChange={(e) => setSelectedTrigger(e.target.value)}
-                          className="bg-slate-950 border border-slate-700 text-slate-300 rounded px-2 py-1"
-                        >
-                          <option value="ALL">All Triggers</option>
-                          <option value="NATURAL">Natural</option>
-                          <option value="HUMAN_TRIGGERED">Human-Triggered</option>
-                          <option value="EXPLOSIVE">Explosive</option>
-                        </select>
-                      </div>
-                    )}
-                  </>
-                )}
+                <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+                  <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{selectedLocation.name} ({selectedLocation.elevation}m)</span>
+                </div>
               </div>
 
-              {/* Quick Peak Selection Badges (Indian Himalayas Only) */}
-              {selectedDomain === 'INDIA' && (
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-mono no-scrollbar">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold shrink-0">Quick Peaks:</span>
-                  {indianPeaks.slice(0, 8).map((peak) => {
-                    const isSelected = selectedIndianPeak?.id === peak.id;
-                    return (
-                      <button
-                        key={peak.id}
-                        onClick={() => {
-                          setSelectedIndianPeak(peak);
-                        }}
-                        className={`px-2 py-0.5 rounded-full border transition-all whitespace-nowrap shrink-0 ${
-                          isSelected
-                            ? 'bg-amber-600 text-white border-amber-400 font-bold shadow-md shadow-amber-900/50'
-                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        {peak.name} ({peak.elevation_m}m)
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
               {/* Leaflet Map Box */}
-              <div className="relative w-full h-[360px] sm:h-[420px] md:h-[460px] lg:h-[480px] xl:h-[clamp(480px,55vh,620px)] rounded-xl overflow-hidden min-w-0">
+              <div className="relative w-full h-[380px] sm:h-[440px] md:h-[480px] lg:h-[500px] xl:h-[clamp(500px,58vh,640px)] rounded-xl overflow-hidden min-w-0 shadow-xl border border-slate-800">
                 <ColoradoMap
                   zones={zones}
                   stations={stations}
                   historicalEvents={historicalEvents}
-                  selectedLocation={mapSelectedLocation}
+                  selectedLocation={selectedLocation}
                   onSelectLocation={handleSelectLocation}
-                  onSelectStation={handleSelectStation}
                   showEvents={showHistoricalEvents}
-                  activeRiskLevel={predictionContext.prediction?.final_risk_level}
-                  isLiveMode={isLivePolling}
+                  activeRiskLevel={prediction?.final_risk_level}
+                  isLiveMode={true}
                   layerVisibility={layerVisibility}
                   riskSurface={activeRiskSurface}
-                  selectedDomain={selectedDomain}
-                  indianPeaks={filteredIndianPeaks}
-                  selectedIndianPeak={selectedIndianPeak}
-                  onSelectIndianPeak={(peak) => setSelectedIndianPeak(peak)}
-                  freshness={freshness}
-                  context={predictionContext}
+                  selectedDomain="COLORADO"
                 />
               </div>
             </div>
 
-            {/* RIGHT (5 Cols): Selected Location Assessment / Indian Peak Details */}
+            {/* RIGHT (5 Cols): Real-Time Risk Intelligence & Safety Assessment */}
             <div className="lg:col-span-5 flex flex-col space-y-3 min-w-0 w-full">
-              {selectedDomain === 'INDIA' ? (
-                <IndianPeakPanel peak={selectedIndianPeak} />
-              ) : (
-                <RiskAssessmentPanel
-                  context={predictionContext}
-                  onSync={handleSyncColoradoTelemetry}
-                  isSyncing={isSyncingTelemetry}
-                  onRefresh={() => {
-                    if (predictionContext.target_type === 'STATION') {
-                      loadStationAssessment(
-                        predictionContext.target_id,
-                        predictionContext.target_name,
-                        predictionContext.latitude,
-                        predictionContext.longitude,
-                        predictionContext.elevation,
-                        predictionContext.slope,
-                        predictionContext.aspect
-                      );
-                    } else {
-                      evaluateCustomPointRisk(
-                        predictionContext.target_name,
-                        predictionContext.latitude,
-                        predictionContext.longitude,
-                        predictionContext.elevation,
-                        predictionContext.slope,
-                        predictionContext.aspect,
-                        predictionContext.target_type === 'ZONE' ? 'ZONE' : 'COORDINATE'
-                      );
-                    }
-                  }}
-                />
-              )}
+              <RiskAssessmentPanel
+                prediction={prediction}
+                selectedLocation={selectedLocation}
+                isLoading={isLoadingPrediction}
+                onRefresh={() => evaluateLocationRisk(selectedLocation)}
+              />
             </div>
           </div>
 
-          {/* Bottom Panels: Diagnostics (Colorado) or Himalayan Geographic Overview (India) */}
-          {selectedDomain === 'INDIA' ? (
-            <div className="space-y-4 min-w-0 w-full">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3 font-sans text-slate-100 min-w-0">
-                <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-2 gap-2 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Mountain className="w-4 h-4 text-amber-400 shrink-0" />
-                    <h3 className="text-xs font-bold font-mono uppercase text-slate-200 truncate">
-                      INDIAN HIMALAYAN REGIONAL DIVISIONS (SURVEY OF INDIA)
-                    </h3>
-                  </div>
-                  <span className="text-[10px] font-mono bg-amber-950/80 text-amber-300 border border-amber-800 px-2 py-0.5 rounded shrink-0">
-                    5 Sectors • 19 Verified Peaks
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 min-w-0">
-                  {indianRegions.map((reg) => (
-                    <div key={reg.id} className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1.5 min-w-0">
-                      <div className="text-xs font-bold text-amber-300 truncate">{reg.name}</div>
-                      <div className="text-[11px] text-slate-400">State: <strong className="text-slate-200">{reg.state}</strong></div>
-                      <div className="text-[10px] font-mono text-slate-400">Center: {reg.center_latitude}°N, {reg.center_longitude}°E</div>
-                      <div className="text-[10px] font-mono text-cyan-400">Cataloged Peaks: {reg.peak_count}</div>
-                    </div>
-                  ))}
-
-                  <div className="bg-amber-950/20 border border-amber-900/60 p-3 rounded-lg space-y-1.5 min-w-0">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
-                      <ShieldAlert className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>Model Boundary Constraint</span>
-                    </div>
-                    <p className="text-[10px] text-slate-300 leading-relaxed">
-                      Colorado avalanche ML weights are strictly decoupled from Indian Himalayan coordinates. Autonomous prediction is blocked.
-                    </p>
-                  </div>
-                </div>
-              </div>
+          {/* Bottom Diagnostics Grid: Terrain + Snowpack + Weather */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0 w-full">
+            <div className="min-w-0 w-full">
+              <TerrainPanel location={selectedLocation} />
             </div>
-          ) : (
-            <>
-              {/* Bottom Diagnostics Grid: Terrain + Snowpack + Weather (Connected to Single PredictionContext) */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0 w-full">
-                <div className="min-w-0 w-full">
-                  <TerrainPanel context={predictionContext} />
-                </div>
-                <div className="min-w-0 w-full">
-                  <SnowpackPanel context={predictionContext} />
-                </div>
-                <div className="min-w-0 w-full">
-                  <WeatherPanel context={predictionContext} />
-                </div>
-              </div>
-
-              {/* Bottom Telemetry Stream Simulator */}
-              <div className="min-w-0 w-full">
-                <TelemetrySimulationPanel
-                  stations={stations}
-                  onTelemetryPrediction={handleTelemetryPrediction}
-                />
-              </div>
-            </>
-          )}
+            <div className="min-w-0 w-full">
+              <SnowpackPanel location={selectedLocation} />
+            </div>
+            <div className="min-w-0 w-full">
+              <WeatherPanel location={selectedLocation} />
+            </div>
+          </div>
         </main>
       )}
 
-      {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-800 px-4 py-3 text-center text-xs text-slate-500 font-mono">
-        SIH260105 Novel Technologies for Early Detection and Mitigation of Avalanches • Research Decision-Support Console
+      {/* Modern Operational Footer */}
+      <footer className="bg-slate-950 border-t border-slate-800 px-4 py-3 text-center text-xs text-slate-500 font-mono flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>AVALANCHE RISK INTELLIGENCE • MOUNTAIN SAFETY OPERATIONS SYSTEM</span>
+        </div>
+        <div className="text-slate-600 text-[11px]">
+          Operational Decision Support for Backcountry, Highways & Search and Rescue
+        </div>
       </footer>
     </div>
   );

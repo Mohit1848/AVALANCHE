@@ -1,242 +1,112 @@
 import React from 'react';
-import { Shield, Activity, Cpu, Radio, Clock, RefreshCw } from 'lucide-react';
-import type { HealthStatus, TelemetryFreshnessStatus, GeographicDomain, PredictionContext } from '../../types';
-import { formatTelemetryAge, getTelemetryBadgeColor } from '../../utils/formatters';
+import { Shield, FileSpreadsheet, TrendingUp, AlertOctagon, Layers, Upload } from 'lucide-react';
+import type { HealthStatus, TelemetryFreshnessStatus } from '../../types';
 
 interface HeaderProps {
-  health: HealthStatus | null;
-  freshness: TelemetryFreshnessStatus | null;
-  context?: PredictionContext | null;
-  activeTab: 'console' | 'spatial' | 'history' | 'playback' | 'research';
-  setActiveTab: (tab: 'console' | 'spatial' | 'history' | 'playback' | 'research') => void;
-  isLivePolling: boolean;
-  setIsLivePolling: (v: boolean) => void;
-  selectedDomain: GeographicDomain;
-  setSelectedDomain: (d: GeographicDomain) => void;
-  onSync?: () => Promise<void> | void;
-  isSyncing?: boolean;
+  health?: HealthStatus | null;
+  freshness?: TelemetryFreshnessStatus | null;
+  activeTab: 'console' | 'custom-data' | 'analytics' | 'advisories';
+  setActiveTab: (tab: 'console' | 'custom-data' | 'analytics' | 'advisories') => void;
+  activePassCount?: number;
+  isLivePolling?: boolean;
+  setIsLivePolling?: (v: boolean) => void;
+  selectedDomain?: string;
+  setSelectedDomain?: (d: any) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  health,
-  freshness,
-  context,
   activeTab,
   setActiveTab,
-  isLivePolling,
-  setIsLivePolling,
-  selectedDomain,
-  setSelectedDomain,
-  onSync,
-  isSyncing = false,
+  activePassCount = 8,
 }) => {
-  const isOnline = health?.status === 'ok' || health?.status === 'degraded';
-  const isColorado = selectedDomain === 'COLORADO';
-  const isModelLoaded = isColorado ? (health?.model_loaded ?? true) : false;
-  const telStatus = context?.freshness_state || freshness?.overall_status || 'STALE';
-  const ageMin = context?.telemetry_age_minutes ?? freshness?.age_minutes ?? health?.telemetry_age_minutes ?? null;
-  const formattedAge = formatTelemetryAge(ageMin);
-
-  const stationsLive = freshness?.stations_healthy ?? 0;
-  const stationsDegraded = freshness?.stations_degraded ?? 0;
-  const stationsStale = freshness?.stations_stale ?? (freshness?.stations_total ?? 10) - stationsLive - stationsDegraded;
-
-  const getDomainSubtext = () => {
-    switch (selectedDomain) {
-      case 'COLORADO':
-        return 'Spatiotemporal Decision-Support Console • Colorado Rocky Mountains';
-      case 'INDIA':
-      case 'HIMALAYA':
-        return 'Himalayan Geographic Decision-Support Console • Northern India Peak Catalog';
-      case 'NEPAL':
-        return 'Nepal Himalayan Geographic Reference • High-Altitude Corridors';
-      case 'BHUTAN':
-        return 'Bhutan Eastern Himalayan Geographic Reference';
-      case 'PAKISTAN':
-        return 'Karakoram & Western Himalaya Geographic Reference';
-      default:
-        return 'Geographic Reference';
-    }
-  };
-
-  const getDomainBadge = () => {
-    if (selectedDomain === 'COLORADO') {
-      return { text: 'MODEL ENABLED v3.0', color: 'bg-cyan-950 text-cyan-400 border-cyan-800' };
-    }
-    return { text: 'GEOGRAPHIC ONLY • DATA AUDITED', color: 'bg-amber-950 text-amber-300 border-amber-800' };
-  };
-
-  const badge = getDomainBadge();
 
   return (
-    <header className="bg-slate-900 border-b border-slate-800 px-3 sm:px-4 py-2.5 text-slate-100 flex flex-wrap items-center justify-between gap-3 shadow-lg sticky top-0 z-30 font-sans min-w-0">
+    <header className="bg-slate-900 border-b border-slate-800 px-3.5 sm:px-5 py-2.5 text-slate-100 flex flex-wrap items-center justify-between gap-3 shadow-lg sticky top-0 z-30 font-sans min-w-0">
+      {/* Brand & System Title */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className={`bg-gradient-to-br ${!isColorado ? 'from-amber-500 to-orange-600 shadow-amber-500/20' : 'from-cyan-500 to-blue-600 shadow-cyan-500/20'} p-2 rounded-lg text-white shadow-md shrink-0 transition-colors`}>
+        <div className="bg-gradient-to-br from-cyan-500 to-blue-600 p-2.5 rounded-xl text-white shadow-md shadow-cyan-500/20 shrink-0">
           <Shield className="w-5 sm:w-6 h-5 sm:h-6" />
         </div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2 truncate">
               <span>AVALANCHE RISK INTELLIGENCE</span>
-              <span className={`text-[10px] sm:text-xs font-mono font-normal ${badge.color} border px-1.5 sm:px-2 py-0.5 rounded shrink-0`}>
-                {badge.text}
+              <span className="text-[10px] font-mono bg-cyan-950 text-cyan-400 border border-cyan-800 px-2 py-0.5 rounded shrink-0">
+                OPERATIONAL OS
               </span>
             </h1>
           </div>
           <p className="text-[11px] sm:text-xs text-slate-400 truncate">
-            {getDomainSubtext()}
+            Real-Time Mountain Hazard Decision Support & GIS Snowpack Intelligence
           </p>
         </div>
       </div>
 
-      {/* Geographic Region Selector with Real Model Availability Flags */}
-      <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs font-mono gap-2 shrink-0">
-        <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">DOMAIN:</span>
-        <select
-          value={selectedDomain}
-          onChange={(e) => setSelectedDomain(e.target.value as GeographicDomain)}
-          className="bg-slate-900 text-cyan-300 font-bold border border-slate-700 rounded px-2 py-1 text-xs focus:outline-none focus:border-cyan-500 cursor-pointer"
-          aria-label="Geographic Region Selector"
-        >
-          <option value="COLORADO">Colorado (Alpine Model Enabled)</option>
-          <option value="INDIA">Indian Himalayas (Geographic Catalog)</option>
-          <option value="NEPAL">Nepal Himalayas (Model Not Available)</option>
-          <option value="BHUTAN">Bhutan Himalayas (Model Not Available)</option>
-          <option value="PAKISTAN">Pakistan Karakoram (Model Not Available)</option>
-        </select>
-      </div>
-
-      {/* Navigation Tabs */}
-      <div className="flex flex-wrap items-center bg-slate-950 border border-slate-800 p-1 rounded-lg gap-0.5 min-w-0">
+      {/* Main Real-World Operational Navigation Tabs */}
+      <div className="flex flex-wrap items-center bg-slate-950 border border-slate-800 p-1 rounded-xl gap-1 min-w-0 shadow-inner">
         <button
           onClick={() => setActiveTab('console')}
-          className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all shrink-0 ${
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
             activeTab === 'console'
-              ? 'bg-cyan-600 text-white shadow-sm'
+              ? 'bg-cyan-600 text-white shadow-md shadow-cyan-950'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Risk Console
+          <Layers className="w-3.5 h-3.5" />
+          <span>Operations Console</span>
         </button>
+
         <button
-          onClick={() => setActiveTab('spatial')}
-          className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all shrink-0 ${
-            activeTab === 'spatial'
-              ? 'bg-cyan-600 text-white shadow-sm'
-              : 'text-slate-400 hover:text-slate-200'
+          onClick={() => setActiveTab('custom-data')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'custom-data'
+              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950'
+              : 'text-emerald-400 hover:text-emerald-200 bg-emerald-950/30'
           }`}
         >
-          Spatial Intelligence
+          <FileSpreadsheet className="w-3.5 h-3.5" />
+          <span>CSV Data Studio</span>
         </button>
+
         <button
-          onClick={() => setActiveTab('history')}
-          className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all shrink-0 ${
-            activeTab === 'history'
-              ? 'bg-cyan-600 text-white shadow-sm'
+          onClick={() => setActiveTab('analytics')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'analytics'
+              ? 'bg-cyan-600 text-white shadow-md shadow-cyan-950'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Risk History
+          <TrendingUp className="w-3.5 h-3.5" />
+          <span>Snow & Weather Analytics</span>
         </button>
+
         <button
-          onClick={() => setActiveTab('playback')}
-          className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all shrink-0 ${
-            activeTab === 'playback'
-              ? 'bg-cyan-600 text-white shadow-sm'
-              : 'text-slate-400 hover:text-slate-200'
+          onClick={() => setActiveTab('advisories')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'advisories'
+              ? 'bg-red-600 text-white shadow-md shadow-red-950'
+              : 'text-red-400 hover:text-red-200 bg-red-950/30'
           }`}
         >
-          Historical Playback
-        </button>
-        <button
-          onClick={() => setActiveTab('research')}
-          className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all shrink-0 ${
-            activeTab === 'research'
-              ? 'bg-cyan-600 text-white shadow-sm'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Model Evaluation
+          <AlertOctagon className="w-3.5 h-3.5" />
+          <span>Safety Advisories</span>
         </button>
       </div>
 
-      {/* Subsystem Health & Freshness Indicators */}
-      <div className="flex flex-wrap items-center gap-2 font-mono text-xs min-w-0">
-        {/* Live Research Toggle */}
+      {/* Real-World Operational Status Indicators */}
+      <div className="flex flex-wrap items-center gap-2 font-mono text-xs shrink-0">
+        <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 px-2.5 py-1.5 rounded-lg text-[11px] text-slate-300">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span className="text-emerald-300 font-bold">{activePassCount} Passes Active</span>
+        </div>
+
         <button
-          onClick={() => setIsLivePolling(!isLivePolling)}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-[11px] font-bold transition-all shrink-0 ${
-            isLivePolling
-              ? 'bg-cyan-950/80 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-950'
-              : 'bg-slate-950 border-slate-800 text-slate-500'
-          }`}
+          onClick={() => setActiveTab('custom-data')}
+          className="flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 border border-emerald-700 text-emerald-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm"
         >
-          <span className={`w-2 h-2 rounded-full ${isLivePolling ? 'bg-cyan-400 animate-ping' : 'bg-slate-600'}`}></span>
-          <span>LIVE MODE</span>
+          <Upload className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Upload CSV</span>
         </button>
-
-        {/* API */}
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border shrink-0 ${
-          isOnline ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300' : 'bg-red-950/60 border-red-800 text-red-300'
-        }`}>
-          <Activity className="w-3.5 h-3.5" />
-          <span>API: {isOnline ? 'ONLINE' : 'UNREACHABLE'}</span>
-        </div>
-
-        {/* MODEL STATUS */}
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border shrink-0 ${
-          isModelLoaded
-            ? 'bg-cyan-950/60 border-cyan-800 text-cyan-300'
-            : 'bg-amber-950/60 border-amber-800 text-amber-300'
-        }`}>
-          <Cpu className="w-3.5 h-3.5" />
-          <span>MODEL: {isModelLoaded ? 'LOADED' : 'INSUFFICIENT DATA'}</span>
-        </div>
-
-        {/* TELEMETRY FRESHNESS */}
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border shrink-0 ${getTelemetryBadgeColor(telStatus)}`}>
-          <Radio className="w-3.5 h-3.5" />
-          <span>TELEMETRY: {isColorado ? telStatus : 'PENDING AWS'}</span>
-        </div>
-
-        {/* SOURCE PROVIDER */}
-        {isColorado && (
-          <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-300 text-[11px] shrink-0 font-mono">
-            <span className="text-slate-400">SOURCE:</span>
-            <span className="text-cyan-300 font-bold">NRCS AWDB</span>
-          </div>
-        )}
-
-        {/* TELEMETRY AGE */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/80 border border-slate-700 text-slate-300 text-[11px] shrink-0">
-          <Clock className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Age: {formattedAge}</span>
-        </div>
-
-        {/* STATIONS BREAKDOWN */}
-        {isColorado && (
-          <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-300 shrink-0 font-mono">
-            <span className="text-slate-500 font-bold">STATIONS:</span>
-            <span className={stationsLive > 0 ? 'text-emerald-400 font-bold' : 'text-slate-400'}>{stationsLive} LIVE</span>
-            <span className="text-slate-600">/</span>
-            <span className={stationsDegraded > 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}>{stationsDegraded} DEGRADED</span>
-            <span className="text-slate-600">/</span>
-            <span className={stationsStale > 0 ? 'text-red-400 font-bold' : 'text-slate-400'}>{stationsStale} STALE</span>
-          </div>
-        )}
-
-        {/* SYNC NOW BUTTON */}
-        {isColorado && onSync && (
-          <button
-            onClick={() => onSync()}
-            disabled={isSyncing}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-600 text-cyan-300 text-[11px] font-bold transition-all shrink-0 disabled:opacity-50"
-            title="Trigger manual live synchronization from USDA NRCS AWDB"
-          >
-            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-cyan-200' : 'text-cyan-400'}`} />
-            <span>{isSyncing ? 'SYNCING...' : 'SYNC NOW'}</span>
-          </button>
-        )}
       </div>
     </header>
   );

@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avalanche Risk Intelligence — System Flow & Architecture Presentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-card-hover: rgba(31, 41, 55, 0.9);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --border-accent: rgba(56, 189, 248, 0.3);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-cyan: #38bdf8;
+      --accent-blue: #3b82f6;
+      --accent-indigo: #6366f1;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-emerald: #10b981;
+      --accent-purple: #a855f7;
+      --glow-cyan: rgba(56, 189, 248, 0.25);
+      --glow-blue: rgba(59, 130, 246, 0.25);
+      --font-display: 'Outfit', -apple-system, sans-serif;
+      --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+        linear-gradient(to bottom, #090d16, #0b0f19);
+    }
+
+    /* Top Navigation / Progress Header */
+    .deck-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: rgba(11, 15, 25, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 100;
+    }
+
+    .project-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 0 15px var(--glow-cyan);
+    }
+
+    .badge-text h1 {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      background: linear-gradient(to right, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge-text span {
+      font-size: 11px;
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-weight: 500;
+    }
+
+    .deck-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .ctrl-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .ctrl-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent-cyan);
+      transform: translateY(-1px);
+    }
+
+    .slide-indicator {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .slide-indicator b {
+      color: var(--accent-cyan);
+    }
+
+    .progress-bar-container {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, var(--accent-cyan), var(--accent-indigo));
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 0 8px var(--glow-cyan);
+    }
+
+    /* Main Presentation Stage */
+    .presentation-stage {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 48px;
+    }
+
+    .slide {
+      position: absolute;
+      width: 92%;
+      max-width: 1360px;
+      height: 86vh;
+      opacity: 0;
+      transform: scale(0.96) translateY(20px);
+      pointer-events: none;
+      transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 40px 48px;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 1px 1px var(--border-accent);
+      backdrop-filter: blur(20px);
+      overflow-y: auto;
+    }
+
+    .slide.active {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      pointer-events: auto;
+    }
+
+    /* Slide Header */
+    .slide-header {
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .slide-category {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .slide-title {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .slide-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .phase-pill {
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    /* Slide Content Layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      flex: 1;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      flex: 1;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      flex: 1;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(56, 189, 248, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      font-size: 20px;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .card-body {
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    .card ul {
+      margin-left: 18px;
+      margin-top: 10px;
+    }
+
+    .card li {
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .card li strong {
+      color: #e2e8f0;
+    }
+
+    /* Architecture Flow Diagram */
+    .flow-diagram-container {
+      background: #070a12;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      overflow-x: auto;
+    }
+
+    .flow-node {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      transition: all 0.2s;
+    }
+
+    .flow-node:hover {
+      background: rgba(56, 189, 248, 0.06);
+      border-color: var(--accent-cyan);
+    }
+
+    .flow-node-step {
+      background: var(--accent-cyan);
+      color: #0b0f19;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+
+    .flow-node-title {
+      font-weight: 700;
+      color: #fff;
+      font-size: 13px;
+    }
+
+    .flow-node-desc {
+      color: var(--text-muted);
+      font-size: 11.5px;
+      margin-left: auto;
+    }
+
+    .flow-arrow-down {
+      text-align: center;
+      color: var(--accent-cyan);
+      font-size: 16px;
+      line-height: 0.8;
+      opacity: 0.8;
+    }
+
+    /* Metric & Highlight Badges */
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-secondary);
+    }
+
+    .tag-cyan { background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.3); color: var(--accent-cyan); }
+    .tag-amber { background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: var(--accent-amber); }
+    .tag-red { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: var(--accent-red); }
+    .tag-green { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: var(--accent-emerald); }
+    .tag-indigo { background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); color: var(--accent-indigo); }
+
+    /* Key Value Table */
+    .kv-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    .kv-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .kv-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+    }
+
+    .kv-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Title Slide Hero Styles */
+    .hero-slide {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      height: 100%;
+      position: relative;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: 46px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, #ffffff 0%, #38bdf8 50%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 16px;
+      line-height: 1.15;
+    }
+
+    .hero-subtitle {
+      font-size: 17px;
+      color: var(--text-secondary);
+      max-width: 840px;
+      line-height: 1.6;
+      margin-bottom: 36px;
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      width: 100%;
+      max-width: 940px;
+      margin-top: 10px;
+    }
+
+    .hero-stat-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .hero-stat-card:hover {
+      border-color: var(--accent-cyan);
+      transform: translateY(-2px);
+    }
+
+    .hero-stat-val {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(to right, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-stat-lbl {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+      font-family: var(--font-mono);
+    }
+
+    /* Bottom Control Bar */
+    .deck-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: rgba(11, 15, 25, 0.9);
+      border-top: 1px solid var(--border-color);
+      z-index: 100;
+    }
+
+    .keys-hint {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .kbd {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #e2e8f0;
+    }
+
+    /* Overview Modal / Grid */
+    .overview-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(11, 15, 25, 0.95);
+      backdrop-filter: blur(20px);
+      z-index: 200;
+      display: none;
+      flex-direction: column;
+      padding: 40px;
+      overflow-y: auto;
+    }
+
+    .overview-drawer.open {
+      display: flex;
+    }
+
+    .overview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .overview-thumb {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .overview-thumb:hover, .overview-thumb.active {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 15px var(--glow-cyan);
+      transform: translateY(-2px);
+    }
+
+    .overview-thumb-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent-cyan);
+    }
+
+    .overview-thumb-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="deck-header">
+    <div class="project-badge">
+      <div class="badge-icon">▲</div>
+      <div class="badge-text">
+        <h1>Avalanche Risk Intelligence</h1>
+        <span>Spatiotemporal Decision-Support System · SIH / Colorado & Himalayas</span>
+      </div>
+    </div>
+
+    <div class="deck-controls">
+      <button class="ctrl-btn" onclick="toggleOverview()">
+        <span>⊞</span> Overview
+      </button>
+      <button class="ctrl-btn" onclick="prevSlide()">
+        <span>←</span> Prev
+      </button>
+      <div class="slide-indicator" id="slideIndicator">
+        Slide <b id="currentSlideNum">1</b> of <span id="totalSlidesNum">12</span>
+      </div>
+      <button class="ctrl-btn" onclick="nextSlide()">
+        Next <span>→</span>
+      </button>
+      <button class="ctrl-btn" onclick="toggleFullscreen()">
+        <span>⛶</span>
+      </button>
+    </div>
+
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+  </header>
+
+  <!-- Slide Stage -->
+  <main class="presentation-stage">
+
+    <!-- SLIDE 1: Title & Vision -->
+    <section class="slide active" data-slide="1">
+      <div class="hero-slide">
+        <div class="phase-pill" style="margin-bottom: 20px;">Research Decision-Support Architecture · Smart India Hackathon</div>
+        <h1 class="hero-title">Spatiotemporal Avalanche<br>Risk Intelligence System</h1>
+        <p class="hero-subtitle">
+          An end-to-end mission-critical architecture combining continuous SNOTEL & AWS meteorological telemetry, Copernicus 30m Digital Elevation Models, Calibrated Machine Learning, and a Deterministic Safety Ratchet Engine for Alpine & Himalayan Corridors.
+        </p>
+
+        <div class="hero-stats">
+          <div class="hero-stat-card">
+            <div class="hero-stat-val">17</div>
+            <div class="hero-stat-lbl">Canonical Features</div>
+          </div>
+          <div class="hero-stat-card">
+            <div class="hero-stat-val">3-Stage</div>
+            <div class="hero-stat-lbl">Safety-Critical Engine</div>
+          </div>
+          <div class="hero-stat-card">
+            <div class="hero-stat-val">26</div>
+            <div class="hero-stat-lbl">FastAPI Endpoints</div>
+          </div>
+          <div class="hero-stat-card">
+            <div class="hero-stat-val">5</div>
+            <div class="hero-stat-lbl">Operational Console Tabs</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: Problem Statement & Core Principles -->
+    <section class="slide" data-slide="2">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">System Philosophy & Safety Directives</div>
+          <h2 class="slide-title">1. Core Design Principles</h2>
+          <div class="slide-subtitle">Why standard machine learning alone is insufficient for life-safety mountain corridor operations</div>
+        </div>
+        <div class="phase-pill">Foundational Axioms</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card" style="border-left: 4px solid var(--accent-cyan);">
+          <div class="card-icon" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan);">🎯</div>
+          <div class="card-title">Backend as Single Source of Truth</div>
+          <div class="card-body">
+            The frontend never computes risk scores, probability thresholds, or escalations. It strictly acts as a rendering and telemetry interaction layer against the FastAPI backend service.
+            <ul>
+              <li><strong>Zero Client Drift:</strong> All thresholding logic and safety policy resides strictly in backend services.</li>
+              <li><strong>Auditable Traceability:</strong> Every returned assessment includes complete calculation provenance.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="border-left: 4px solid var(--accent-amber);">
+          <div class="card-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber);">⚖️</div>
+          <div class="card-title">Policy Separated from Statistical Prediction</div>
+          <div class="card-body">
+            The system decouples statistical ML predictions (<code style="color:var(--accent-cyan);">inference_service</code>) from operational policy decisions (<code style="color:var(--accent-amber);">risk_engine</code>).
+            <ul>
+              <li><strong>Independent Levels:</strong> Both <code style="color:#e2e8f0;">model_risk_level</code> and <code style="color:#e2e8f0;">final_risk_level</code> are returned separately.</li>
+              <li><strong>Observable Escalation:</strong> Operators always see if an engineering rule overrode the model.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="border-left: 4px solid var(--accent-red);">
+          <div class="card-icon" style="background: rgba(239, 68, 68, 0.15); color: var(--accent-red);">🛡️</div>
+          <div class="card-title">Fail Safe, Not Silent</div>
+          <div class="card-body">
+            When critical sensor observations (temperature, slope) are missing or corrupt:
+            <ul>
+              <li>The engine returns <code style="color:var(--accent-red);">INSUFFICIENT_DATA</code> rather than fabricating a plausible default.</li>
+              <li>Out-of-bound sensor inputs are nulled with recorded warnings, never silently clamped.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card" style="border-left: 4px solid var(--accent-emerald);">
+          <div class="card-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);">⏳</div>
+          <div class="card-title">Strict Temporal & Spatial Isolation</div>
+          <div class="card-body">
+            All time-series rolling features enforce <code style="color:var(--accent-emerald);">T_obs &le; T_target</code> to completely eliminate future look-ahead data leakage.
+            <ul>
+              <li><strong>Physical Spatial Interpolation:</strong> Physical weather variables are interpolated across grid coordinates first; models execute per-cell rather than averaging risk scores.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: End-to-End System Flow -->
+    <section class="slide" data-slide="3">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">System Architecture & Pipeline Flow</div>
+          <h2 class="slide-title">2. End-to-End Execution Flow</h2>
+          <div class="slide-subtitle">How a request or telemetry stream moves through all layers to produce a safety decision</div>
+        </div>
+        <div class="phase-pill">Pipeline Lifecycle</div>
+      </div>
+
+      <div class="flow-diagram-container">
+        <div class="flow-node">
+          <span class="flow-node-step">1. Ingest</span>
+          <span class="flow-node-title">Telemetry & Terrain Ingestion</span>
+          <span class="flow-node-desc">SNOTEL / AWS Continuous feeds + Copernicus 30m DEM + Station Config YAML</span>
+        </div>
+        <div class="flow-arrow-down">▼</div>
+
+        <div class="flow-node">
+          <span class="flow-node-step">2. Validate</span>
+          <span class="flow-node-title">Physical Bounds & Provenance Gating</span>
+          <span class="flow-node-desc">UTC normalization, out-of-range sensor nulling, freshness rating (GOOD/DEGRADED/STALE)</span>
+        </div>
+        <div class="flow-arrow-down">▼</div>
+
+        <div class="flow-node">
+          <span class="flow-node-step">3. Transform</span>
+          <span class="flow-node-title">Spatiotemporal Feature Extraction</span>
+          <span class="flow-node-desc">Rolling 6h/24h/72h windows, cyclic aspect (sin/cos), temp deltas → Canonical 17-Feature Vector</span>
+        </div>
+        <div class="flow-arrow-down">▼</div>
+
+        <div class="flow-node">
+          <span class="flow-node-step">4. Infer</span>
+          <span class="flow-node-title">Calibrated Machine Learning Inference</span>
+          <span class="flow-node-desc">CalibratedClassifierCV Random Forest / Gradient Boosting → Raw & Calibrated Probabilities</span>
+        </div>
+        <div class="flow-arrow-down">▼</div>
+
+        <div class="flow-node">
+          <span class="flow-node-step">5. Policy</span>
+          <span class="flow-node-title">Deterministic Safety Risk Engine</span>
+          <span class="flow-node-desc">Data quality gate + 3 deterministic physical escalation rules (1-way upward ratchet)</span>
+        </div>
+        <div class="flow-arrow-down">▼</div>
+
+        <div class="flow-node">
+          <span class="flow-node-step">6. Deliver</span>
+          <span class="flow-node-title">API & Decision Dashboard</span>
+          <span class="flow-node-desc">FastAPI 26 endpoints → React 19 Leaflet GIS Console + Audit Logging & Indian Geography</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: Ingestion & Gating -->
+    <section class="slide" data-slide="4">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">Layer 1: Data Acquisition & Validation</div>
+          <h2 class="slide-title">3. Telemetry Ingestion & Freshness Gating</h2>
+          <div class="slide-subtitle">Defensive sensor validation, ISO-8601 UTC normalization, and SQLite persistence</div>
+        </div>
+        <div class="phase-pill">services/ingestion/</div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-icon" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan);">📡</div>
+          <div class="card-title">Multi-Source Ingestion</div>
+          <div class="card-body">
+            Driven entirely by <code style="color:var(--accent-cyan);">config/stations.yaml</code>.
+            <ul>
+              <li>Colorado SNOTEL network (Berthoud Pass, Loveland Basin, Vail Mtn, Niwot).</li>
+              <li>High-altitude AWS Himalayan meteorological streams.</li>
+              <li>Variables: <code style="color:#e2e8f0;">TOBS</code>, <code style="color:#e2e8f0;">SNWD</code>, <code style="color:#e2e8f0;">WTEQ</code>, <code style="color:#e2e8f0;">PREC</code>.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber);">🔬</div>
+          <div class="card-title">Physical Bounds Validator</div>
+          <div class="card-body">
+            Rejects physically impossible environmental sensor telemetry:
+            <ul>
+              <li><strong>Temperature:</strong> -50°C to +40°C</li>
+              <li><strong>Snow Depth:</strong> 0 cm to 1000 cm</li>
+              <li><strong>Wind Speed:</strong> 0 km/h to 300 km/h</li>
+              <li><strong>Slope:</strong> 0° to 90°</li>
+              <li><em>Never clamps values:</em> Nulled with recorded warning to prevent false certainty.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);">⏱️</div>
+          <div class="card-title">Telemetry Freshness Gating</div>
+          <div class="card-body">
+            Calculates observation age (<code style="color:#e2e8f0;">t_now - t_latest</code>):
+            <div class="badge-row">
+              <span class="tag tag-green">GOOD: &lt; 3 hours</span>
+              <span class="tag tag-amber">DEGRADED: 3 - 24 hours</span>
+              <span class="tag tag-red">STALE: &gt; 24 hours</span>
+            </div>
+            <div style="margin-top: 14px; font-size: 12.5px; color: var(--text-muted);">
+              Persists observations & audit history into SQLite (<code style="color:#e2e8f0;">storage.py</code>).
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: Feature Engineering Vector -->
+    <section class="slide" data-slide="5">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">Layer 2: Feature Engineering Schema</div>
+          <h2 class="slide-title">4. Canonical 17-Feature Spatiotemporal Vector</h2>
+          <div class="slide-subtitle">Capturing terrain geometry, current state, and 72-hour dynamic snowpack metamorphism</div>
+        </div>
+        <div class="phase-pill">v2_spatiotemporal_17f</div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-cyan);">Terrain & Topography</div>
+          <div class="card-body">
+            Derived from Copernicus 30m Digital Elevation Model:
+            <table class="kv-table">
+              <tr><td><code>slope</code></td><td>Incline angle in degrees (30°-45° is prime slab zone)</td></tr>
+              <tr><td><code>aspect_sin</code></td><td>Sin component of continuous aspect (East-West)</td></tr>
+              <tr><td><code>aspect_cos</code></td><td>Cos component of aspect (North-South solar exposure)</td></tr>
+              <tr><td><code>elevation</code></td><td>Altitude in meters (alpine/treeline/below)</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-blue);">Instantaneous Meteorology</div>
+          <div class="card-body">
+            Real-time weather station ambient state:
+            <table class="kv-table">
+              <tr><td><code>temperature</code></td><td>Air temperature (°C) — drives slab bonding</td></tr>
+              <tr><td><code>humidity</code></td><td>Relative humidity (%) — sublimation & surface hoar</td></tr>
+              <tr><td><code>pressure</code></td><td>Barometric pressure (hPa) — frontal passage</td></tr>
+              <tr><td><code>precipitation</code></td><td>Incremental water equivalent (mm)</td></tr>
+              <tr><td><code>snow_depth</code></td><td>Total settled snowpack depth (cm)</td></tr>
+              <tr><td><code>snow_water_eq</code></td><td>SWE (mm) — total snowpack mass density</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="color: var(--accent-amber);">Time-Series Dynamics</div>
+          <div class="card-body">
+            Rolling aggregations across critical storm cycles:
+            <table class="kv-table">
+              <tr><td><code>snowfall_6h/24h/72h</code></td><td>Accumulated new storm loading (mm)</td></tr>
+              <tr><td><code>temp_delta_24h/72h</code></td><td>Rapid thermal shifts (°C) inducing slab shear</td></tr>
+              <tr><td><code>wind_mean_24h</code></td><td>Mean wind velocity (km/h) driving transport</td></tr>
+              <tr><td><code>wind_max_24h</code></td><td>Peak gusts (km/h) forming hard slab cornices</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: Spatial Grid & Interpolation -->
+    <section class="slide" data-slide="6">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">Layer 3: Geospatial Intelligence & Interpolation</div>
+          <h2 class="slide-title">5. Spatial Layer & Physical Interpolation</h2>
+          <div class="slide-subtitle">Why we interpolate physical atmospheric features, not output probabilities</div>
+        </div>
+        <div class="phase-pill">ml/spatial/idw.py</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-icon" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan);">🗺️</div>
+          <div class="card-title">Inverse Distance Weighting (IDW) of Physical Fields</div>
+          <div class="card-body">
+            <p><strong>Crucial Architectural Decision:</strong></p>
+            <p style="margin-top:8px;">Physical variables (temperature, SWE, precipitation, new snowfall) are interpolated over the 2D/3D coordinate grid using Haversine distance weighting (power = 2.0). The machine learning model is subsequently executed <em>independently on every grid cell</em>.</p>
+            <div style="margin-top: 14px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid var(--accent-red); border-radius: 6px;">
+              <strong style="color:var(--accent-red);">Anti-Pattern Avoided:</strong> Interpolating risk probabilities directly across space would artificially smooth out sharp ridgelines, convex rolls, and couloir release zones.
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-emerald);">📊</div>
+          <div class="card-title">Spatial Validation & Denial-of-Service Limits</div>
+          <div class="card-body">
+            <ul>
+              <li><strong>Leave-One-Station-Out (LOSO) CV:</strong> Measures spatial generalization error (RMSE, MAE) across isolated stations.</li>
+              <li><strong>Uncertainty Quantification:</strong> Calculates station distance penalty and sparse-station variance.</li>
+              <li><strong>Computation Guardrails:</strong>
+                <ul>
+                  <li>Max bounding box: <code style="color:#e2e8f0;">1.5° &times; 1.5°</code></li>
+                  <li>Max grid cells: <code style="color:#e2e8f0;">625 cells</code></li>
+                  <li>Requests exceeding limits return <code style="color:var(--accent-amber);">422 Unprocessable</code>.</li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: Calibrated ML Pipeline -->
+    <section class="slide" data-slide="7">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">Layer 4: Supervised Learning & Calibration</div>
+          <h2 class="slide-title">6. Calibrated Machine Learning Pipeline</h2>
+          <div class="slide-subtitle">Probability calibration (CalibratedClassifierCV) and threshold optimization</div>
+        </div>
+        <div class="phase-pill">api/services/inference_service.py</div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title" style="color:var(--accent-cyan);">Supervised Ensemble Models</div>
+          <div class="card-body">
+            Trained on historical CAIC observations & high-altitude weather records:
+            <ul>
+              <li><strong>Primary:</strong> Calibrated Random Forest Classifier</li>
+              <li><strong>Benchmarked:</strong> Gradient Boosting, XGBoost, CatBoost, Regularized Logistic Regression</li>
+              <li><strong>Class Weighting:</strong> Balanced penalization to address extreme rarity of avalanche release events.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="color:var(--accent-indigo);">Probability Calibration</div>
+          <div class="card-body">
+            Raw tree predictions are uncalibrated and overconfident:
+            <ul>
+              <li><strong>CalibratedClassifierCV:</strong> Isotonic & Sigmoid post-processing transforms raw margins into authentic release probabilities.</li>
+              <li><strong>Brier Score Minimization:</strong> Ensures that when the system predicts 70% risk, the historical event rate matches 70%.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="color:var(--accent-amber);">Safety-Tuned Thresholds</div>
+          <div class="card-body">
+            Standard 0.50 threshold is dangerous in life-safety domains:
+            <table class="kv-table">
+              <tr><td><code>p &lt; 0.40</code></td><td><span class="tag tag-green">LOW RISK</span></td></tr>
+              <tr><td><code>0.40 &le; p &lt; 0.70</code></td><td><span class="tag tag-amber">MEDIUM RISK</span></td></tr>
+              <tr><td><code>p &ge; 0.70</code></td><td><span class="tag tag-red">HIGH RISK</span></td></tr>
+            </table>
+            <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted);">
+              Optimized for high recall over dangerous false negatives.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: Deterministic Safety Risk Engine -->
+    <section class="slide" data-slide="8">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">Layer 5: Policy & Safety Ratchet</div>
+          <h2 class="slide-title">7. Deterministic Safety-Critical Risk Engine</h2>
+          <div class="slide-subtitle">A strict, auditable, one-way upward escalation policy layer</div>
+        </div>
+        <div class="phase-pill">ml/risk_engine.py</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-icon" style="background: rgba(239, 68, 68, 0.15); color: var(--accent-red);">🛡️</div>
+          <div class="card-title">3-Stage Evaluation Architecture</div>
+          <div class="card-body">
+            <ol style="margin-left: 20px; line-height: 1.8;">
+              <li><strong>Stage 1: Data Quality Assessment</strong>
+                <br>Checks presence of critical features (<code style="color:#e2e8f0;">temperature</code>, <code style="color:#e2e8f0;">slope</code>). If missing &rarr; returns <code style="color:var(--accent-red);">INSUFFICIENT_DATA</code>.
+              </li>
+              <li><strong>Stage 2: Statistical Base Mapping</strong>
+                <br>Maps calibrated probability <code style="color:#e2e8f0;">p</code> into initial base score & level.
+              </li>
+              <li><strong>Stage 3: Deterministic Physical Escalations</strong>
+                <br>Evaluates physical laws. Escalations are <em>strictly one-directional</em> (ratchet up, never down).
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-amber);">⚡</div>
+          <div class="card-title">Deterministic Escalation Rules</div>
+          <div class="card-body">
+            <table class="kv-table">
+              <tr>
+                <td><strong style="color:var(--accent-red);">Rule 1: Heavy Storm Loading</strong></td>
+                <td>(Snowfall 24h &ge; 30mm OR 72h &ge; 45mm) AND Slope &ge; 34° &rarr; <strong>Forces HIGH RISK (&ge; 70%)</strong></td>
+              </tr>
+              <tr>
+                <td><strong style="color:var(--accent-amber);">Rule 2: Rapid Thermal Warming</strong></td>
+                <td>Temp 24h delta &ge; +5°C AND Temp &gt; 0°C AND Slope &ge; 30° &rarr; <strong>Forces MEDIUM/HIGH</strong></td>
+              </tr>
+              <tr>
+                <td><strong style="color:var(--accent-indigo);">Rule 3: Wind Slab Loading</strong></td>
+                <td>Max wind &ge; 40 km/h AND Snowfall 24h &ge; 10mm AND Slope &ge; 32° &rarr; <strong>Escalates Risk</strong></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: FastAPI Backend Architecture -->
+    <section class="slide" data-slide="9">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">Layer 6: API Service Layer</div>
+          <h2 class="slide-title">8. FastAPI Microservice Architecture</h2>
+          <div class="slide-subtitle">26 REST endpoints, CORS middleware, and zero-leakage error handling</div>
+        </div>
+        <div class="phase-pill">api/main.py · port 8000</div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title" style="color:var(--accent-cyan);">Inference & Telemetry</div>
+          <div class="card-body">
+            <ul>
+              <li><code style="color:#e2e8f0;">POST /predict/point</code> — Real-time single coordinate assessment</li>
+              <li><code style="color:#e2e8f0;">POST /predict/telemetry</code> — Observation time-series stream inference</li>
+              <li><code style="color:#e2e8f0;">GET /predictions</code> — Historical audit ledger</li>
+              <li><code style="color:#e2e8f0;">GET /telemetry/status</code> — SNOTEL station freshness & age</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="color:var(--accent-blue);">Spatial & Geography</div>
+          <div class="card-body">
+            <ul>
+              <li><code style="color:#e2e8f0;">POST /spatial/predict/spatial</code> — 2D bounding-box risk surface</li>
+              <li><code style="color:#e2e8f0;">GET /spatial/zones</code> — Aggregated operational zone risk</li>
+              <li><code style="color:#e2e8f0;">GET /geography/india/peaks</code> — Catalog of 20+ Himalayan peaks</li>
+              <li><code style="color:#e2e8f0;">GET /geography/india/regions</code> — Karakoram, Pir Panjal, Zanskar, etc.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="color:var(--accent-emerald);">Health & Defensive Shielding</div>
+          <div class="card-body">
+            <ul>
+              <li><code style="color:#e2e8f0;">GET /health</code> — Diagnostic checks on all 7 subsystems</li>
+              <li><code style="color:#e2e8f0;">GET /model/scientific-evaluation</code> — Full validation reports</li>
+              <li><strong>Sanitized Handlers:</strong> 422 & 500 handlers return structured codes without internal trace leaks.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: Frontend Decision-Support Console -->
+    <section class="slide" data-slide="10">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">Layer 7: Operator Presentation Layer</div>
+          <h2 class="slide-title">9. Frontend Decision-Support Console</h2>
+          <div class="slide-subtitle">React 19, TypeScript, Leaflet GIS, Recharts, and Indian Himalayas Expansion</div>
+        </div>
+        <div class="phase-pill">frontend/ · port 5173</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title" style="color:var(--accent-cyan);">5 Operational Console Tabs</div>
+          <div class="card-body">
+            <table class="kv-table">
+              <tr>
+                <td><strong>1. Operational Console</strong></td>
+                <td>Point risk prediction, environmental parameter sliders, what-if simulations, and real-time station telemetry.</td>
+              </tr>
+              <tr>
+                <td><strong>2. Spatial Intelligence</strong></td>
+                <td>IDW grid risk heatmaps, terrain contour overlays (20m/50m/100m), zone boundary summaries, LOSO CV badges.</td>
+              </tr>
+              <tr>
+                <td><strong>3. Historical Audit</strong></td>
+                <td>Persistent ledger of past model assessments, escalation reason tags, and data quality states.</td>
+              </tr>
+              <tr>
+                <td><strong>4. Playback Simulator</strong></td>
+                <td>Historical time-slider replay across major avalanche storm cycles.</td>
+              </tr>
+              <tr>
+                <td><strong>5. Model Research</strong></td>
+                <td>Calibration curves, ROC/PR curves, confusion matrices, and ablation reports.</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="color:var(--accent-indigo);">Indian Himalayas Domain Expansion</div>
+          <div class="card-body">
+            Seamless multi-geography toggle between <strong>Colorado Rockies</strong> and <strong>Indian Himalayas</strong>:
+            <ul>
+              <li><strong>6 Major Himalayan Ranges:</strong> Karakoram, Pir Panjal, Great Himalayas, Zanskar, Dhauladhar, Garhwal.</li>
+              <li><strong>Strategic Defense & Alpine Corridors:</strong> Siachen Base, Dras (Kargil), Rohtang Pass, Khardung La, Nanda Devi, Kangchenjunga, Nun Kun, Kamet.</li>
+              <li><strong>High-Altitude Alpine Parameter Tuning:</strong> Adapted for extreme relief, deep cold continental snowpacks, and monsoon-winter transitions.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 11: Scientific Validation & Evaluation -->
+    <section class="slide" data-slide="11">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">Scientific Verification & Reliability</div>
+          <h2 class="slide-title">10. Scientific Validation Suite</h2>
+          <div class="slide-subtitle">Reproducible evaluation protocols ensuring real-world operational reliability</div>
+        </div>
+        <div class="phase-pill">evaluation/run_all.py</div>
+      </div>
+
+      <div class="grid-4">
+        <div class="card">
+          <div class="card-title" style="font-size:15px; color:var(--accent-cyan);">Temporal Holdout</div>
+          <div class="card-body" style="font-size:12.5px;">
+            Strict evaluation on held-out 2023–2024 winter season observations to prevent chronological memorization.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="font-size:15px; color:var(--accent-blue);">Walk-Forward CV</div>
+          <div class="card-body" style="font-size:12.5px;">
+            Expanding window walk-forward validation testing seasonal generalization over consecutive annual cycles.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="font-size:15px; color:var(--accent-amber);">Spatial LOSO CV</div>
+          <div class="card-body" style="font-size:12.5px;">
+            Leave-One-Station-Out cross-validation across stations to quantify spatial interpolation error.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="font-size:15px; color:var(--accent-emerald);">Ablation Studies</div>
+          <div class="card-body" style="font-size:12.5px;">
+            Systematic feature-group knockouts measuring the sensitivity of terrain, weather, and rolling storm loading.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 12: Summary & Key Takeaways -->
+    <section class="slide" data-slide="12">
+      <div class="slide-header">
+        <div>
+          <div class="slide-category">Conclusion & Operational Value</div>
+          <h2 class="slide-title">11. Summary & Operational Value</h2>
+          <div class="slide-subtitle">Transforming alpine hazard monitoring into an auditable, safety-critical decision system</div>
+        </div>
+        <div class="phase-pill">Operational Deployment</div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card" style="border-top: 3px solid var(--accent-cyan);">
+          <div class="card-title">1. Physics + AI Fusion</div>
+          <div class="card-body">
+            Combines the predictive power of machine learning with deterministic physical safety rules that cannot be fooled by uncharacteristic data.
+          </div>
+        </div>
+
+        <div class="card" style="border-top: 3px solid var(--accent-amber);">
+          <div class="card-title">2. Full Auditability</div>
+          <div class="card-body">
+            Every output retains complete provenance: raw probabilities, calibrated values, data quality flags, and human-readable escalation reasons.
+          </div>
+        </div>
+
+        <div class="card" style="border-top: 3px solid var(--accent-emerald);">
+          <div class="card-title">3. Multi-Domain Ready</div>
+          <div class="card-body">
+            Fully architected for strategic Himalayan defense corridors and alpine transportation highways with real-time GIS visualization.
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 24px; text-align: center; padding: 18px; background: rgba(56, 189, 248, 0.05); border: 1px dashed rgba(56, 189, 248, 0.3); border-radius: 12px;">
+        <span style="color: var(--accent-cyan); font-weight: 700; font-family: var(--font-mono); font-size: 13px;">
+          ✓ Project Active: Frontend http://localhost:5173 · Backend API http://localhost:8000 · Documentation /docs
+        </span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Keyboard & Progress Bar -->
+  <footer class="deck-footer">
+    <div class="keys-hint">
+      <span>Navigate: <span class="kbd">←</span> <span class="kbd">→</span> or <span class="kbd">Space</span></span>
+      <span>Overview: <span class="kbd">Esc</span> or <span class="kbd">O</span></span>
+      <span>Fullscreen: <span class="kbd">F</span></span>
+    </div>
+    <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">
+      SIH Avalanche Risk Intelligence Platform v2.0
+    </div>
+  </footer>
+
+  <!-- Slide Overview Drawer -->
+  <div class="overview-drawer" id="overviewDrawer">
+    <div class="overview-header">
+      <h2 style="font-family: var(--font-display); font-size: 24px; color: #fff;">Slide Deck Overview</h2>
+      <button class="ctrl-btn" onclick="toggleOverview()">✕ Close</button>
+    </div>
+    <div class="overview-grid" id="overviewGrid"></div>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+
+    document.getElementById('totalSlidesNum').textContent = totalSlides;
+
+    function updateSlide() {
+      slides.forEach((slide, idx) => {
+        const slideNum = idx + 1;
+        if (slideNum === currentSlide) {
+          slide.classList.add('active');
+        } else {
+          slide.classList.remove('active');
+        }
+      });
+
+      document.getElementById('currentSlideNum').textContent = currentSlide;
+      const progressPercent = ((currentSlide - 1) / (totalSlides - 1)) * 100;
+      document.getElementById('progressBar').style.width = progressPercent + '%';
+
+      // Update overview thumbnails active state
+      document.querySelectorAll('.overview-thumb').forEach((thumb, idx) => {
+        if (idx + 1 === currentSlide) {
+          thumb.classList.add('active');
+        } else {
+          thumb.classList.remove('active');
+        }
+      });
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function goToSlide(n) {
+      if (n >= 1 && n <= totalSlides) {
+        currentSlide = n;
+        updateSlide();
+        closeOverview();
+      }
+    }
+
+    function toggleOverview() {
+      const drawer = document.getElementById('overviewDrawer');
+      drawer.classList.toggle('open');
+    }
+
+    function closeOverview() {
+      document.getElementById('overviewDrawer').classList.remove('open');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Escape' || e.key.toLowerCase() === 'o') {
+        toggleOverview();
+      } else if (e.key.toLowerCase() === 'f') {
+        toggleFullscreen();
+      } else if (e.key === 'Home') {
+        goToSlide(1);
+      } else if (e.key === 'End') {
+        goToSlide(totalSlides);
+      }
+    });
+
+    // Populate Overview Grid
+    const overviewGrid = document.getElementById('overviewGrid');
+    slides.forEach((slide, idx) => {
+      const slideNum = idx + 1;
+      const titleElem = slide.querySelector('.slide-title') || slide.querySelector('.hero-title');
+      const title = titleElem ? titleElem.innerText.replace('\n', ' ') : `Slide ${slideNum}`;
+      
+      const thumb = document.createElement('div');
+      thumb.className = `overview-thumb ${slideNum === 1 ? 'active' : ''}`;
+      thumb.onclick = () => goToSlide(slideNum);
+      thumb.innerHTML = `
+        <div class="overview-thumb-num">SLIDE ${slideNum}</div>
+        <div class="overview-thumb-title">${title}</div>
+      `;
+      overviewGrid.appendChild(thumb);
+    });
+
+    // Initial render
+    updateSlide();
+  </script>
+</body>
+</html>

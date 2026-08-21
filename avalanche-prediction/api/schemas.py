@@ -57,6 +57,26 @@ class PointPredictionRequest(BaseModel):
     location_id: Optional[str] = Field("POINT_QUERY", description="Optional identifier for target location")
 
 
+class BatchPointPredictionRequest(BaseModel):
+    points: List[PointPredictionRequest] = Field(..., min_length=1, max_length=500, description="Batch list of mountain coordinate points")
+
+
+class BatchPointPredictionItem(BaseModel):
+    index: int
+    location_id: Optional[str] = None
+    latitude: float
+    longitude: float
+    prediction: Optional[RiskPredictionResponse] = None
+    error: Optional[str] = None
+
+
+class BatchPointPredictionResponse(BaseModel):
+    total: int
+    successful: int
+    failed: int
+    results: List[BatchPointPredictionItem] = Field(..., description="Batch prediction results per coordinate point")
+
+
 class TelemetryObservation(BaseModel):
     timestamp: str = Field(..., description="Observation timestamp in ISO-8601 format (UTC)")
     temperature: Optional[float] = Field(None, ge=-80.0, le=60.0, description="Air temperature in °C")

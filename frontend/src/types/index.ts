@@ -1,20 +1,8 @@
-export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'STALE' | 'INSUFFICIENT_DATA';
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'INSUFFICIENT_DATA';
 export type DataQuality = 'GOOD' | 'DEGRADED' | 'STALE' | 'INSUFFICIENT';
 export type SpatialQuality = 'EXCELLENT' | 'GOOD' | 'DEGRADED' | 'INSUFFICIENT';
 
-export interface RuleEvaluationItem {
-  rule_id: string;
-  rule_name: string;
-  description: string;
-  condition: string;
-  actual_values: Record<string, number>;
-  thresholds: Record<string, string>;
-  status: 'TRIGGERED' | 'NOT MET';
-  target_minimum_level: string;
-}
-
 export interface RiskPredictionResponse {
-  domain?: string;
   model_risk_score: number | null;
   final_risk_score: number | null;
   model_risk_level: RiskLevel;
@@ -32,82 +20,8 @@ export interface RiskPredictionResponse {
     medium: number;
     high: number;
   };
-  rule_evaluations?: RuleEvaluationItem[];
-  features?: Record<string, any>;
   provenance: Record<string, unknown>;
   disclaimer: string;
-}
-
-export interface StationAssessmentResponse {
-  station_id: string;
-  station_name: string;
-  latitude: number;
-  longitude: number;
-  elevation: number;
-  slope: number;
-  aspect: number;
-  telemetry_timestamp: string | null;
-  telemetry_age_minutes: number | null;
-  data_quality: DataQuality;
-  freshness_state: DataQuality;
-  assessment_status: 'CURRENT' | 'SUPPRESSED' | 'UNAVAILABLE';
-  prediction_available: boolean;
-  suppression_reason: string | null;
-  current_utc: string;
-  telemetry_status: DataQuality;
-  last_observation_timestamp: string | null;
-  features: Record<string, any> | null;
-  prediction: RiskPredictionResponse | null;
-  rules_evaluation: RuleEvaluationItem[];
-}
-
-export interface PredictionContext {
-  target_id: string;
-  target_name: string;
-  target_type: 'STATION' | 'COORDINATE' | 'ZONE' | 'PEAK';
-  latitude: number;
-  longitude: number;
-  elevation: number;
-  slope: number;
-  aspect: number;
-  aspect_direction?: string;
-
-  // Weather / Meteorological
-  temperature: number | null;
-  humidity: number | null;
-  pressure: number | null;
-  precipitation: number | null;
-  wind_speed_mean_24h: number | null;
-  wind_speed_max_24h: number | null;
-
-  // Snowpack & Rolling Deltas
-  snow_depth: number | null;
-  snow_water_equivalent: number | null;
-  snowfall_6h: number | null;
-  snowfall_24h: number | null;
-  snowfall_72h: number | null;
-  temperature_delta_24h: number | null;
-  temperature_delta_72h: number | null;
-
-  // Authoritative Freshness & Provenance (Single Source of Truth)
-  telemetry_timestamp: string | null;
-  telemetry_age_minutes: number | null;
-  data_quality: DataQuality;
-  freshness_state: DataQuality;
-  assessment_status: 'CURRENT' | 'SUPPRESSED' | 'UNAVAILABLE';
-  prediction_available: boolean;
-  suppression_reason: string | null;
-  current_utc: string;
-  telemetry_status: DataQuality;
-  last_observation_timestamp: string | null;
-  telemetry_source: string;
-  terrain_source: string;
-
-  // Risk & Prediction
-  prediction: RiskPredictionResponse | null;
-  rules_evaluation: RuleEvaluationItem[];
-  isLoading: boolean;
-  error: string | null;
 }
 
 export interface PointPredictionPayload {
@@ -189,18 +103,6 @@ export interface HealthStatus {
   disclaimer: string;
 }
 
-export interface StationFreshnessReport {
-  station_id: string;
-  station_name: string;
-  zone_id: string;
-  status: DataQuality;
-  freshness_state: DataQuality;
-  data_quality: DataQuality;
-  last_observation_timestamp: string | null;
-  telemetry_timestamp: string | null;
-  telemetry_age_minutes: number | null;
-}
-
 export interface TelemetryFreshnessStatus {
   overall_status: DataQuality;
   last_update: string;
@@ -210,7 +112,6 @@ export interface TelemetryFreshnessStatus {
   stations_degraded: number;
   stations_stale: number;
   warnings: string[];
-  station_reports?: StationFreshnessReport[];
 }
 
 export interface AvalancheZone {
@@ -348,7 +249,6 @@ export interface SpatialPredictionGridResponse {
 export interface ZoneRiskSummary {
   zone_id: string;
   zone_name: string;
-  domain?: string;
   timestamp: string;
   zone_risk_level: RiskLevel;
   zone_median_risk_score: number;
@@ -359,7 +259,6 @@ export interface ZoneRiskSummary {
   primary_drivers: string[];
   method: string;
   model_version: string;
-  disclaimer?: string;
 }
 
 export interface SpatialValidationMetrics {
@@ -491,52 +390,7 @@ export interface ScientificEvaluationReport {
   disclaimer: string;
 }
 
-export type GeographicDomain = 'COLORADO' | 'INDIA' | 'HIMALAYA' | 'NEPAL' | 'BHUTAN' | 'PAKISTAN';
-
-export type GatingState =
-  | 'GEOGRAPHIC_ONLY'
-  | 'DATA_ACQUIRED'
-  | 'DATA_AUDITED'
-  | 'TRAINING_READY'
-  | 'MODEL_TRAINED'
-  | 'TEMPORAL_VALIDATED'
-  | 'SPATIAL_VALIDATED'
-  | 'CALIBRATED'
-  | 'MODEL_ENABLED';
-
-export interface DomainStatus {
-  domain: GeographicDomain;
-  display_name: string;
-  gating_state: GatingState;
-  model_loaded: boolean;
-  model_status: string;
-  model_version: string;
-  dataset_version: string;
-  feature_schema_version: string;
-  calibration_status: string;
-  operating_threshold: number;
-  thresholds: { medium: number; high: number };
-  disclaimer: string;
-}
-
-export interface CrossDomainComparison {
-  comparison_title: string;
-  scientific_disclaimer: string;
-  domains: {
-    colorado: DomainStatus;
-    himalaya: DomainStatus;
-  };
-  metrics_table: Array<{
-    metric: string;
-    colorado: string;
-    himalaya: string;
-  }>;
-  domain_shift_experiment: {
-    experiment: string;
-    finding: string;
-    conclusion: string;
-  };
-}
+export type GeographicDomain = 'COLORADO' | 'INDIA';
 
 export interface DataProvenance {
   data_source?: string;
@@ -592,41 +446,100 @@ export interface IndianRegionsResponse {
   regions: IndianRegion[];
 }
 
-export interface ColoradoTelemetryStatus {
-  provider: string;
-  status: 'LIVE' | 'DEGRADED' | 'STALE' | 'HISTORICAL' | 'OFFLINE';
-  last_successful_sync: string | null;
-  latest_observation_utc: string | null;
-  latest_observation_age_minutes: number | null;
-  stations_total: number;
-  stations_live: number;
-  stations_degraded: number;
-  stations_stale: number;
-  stations_historical: number;
-  stations_missing: number;
-}
+// =====================================================================
+// Custom Data Ingestion & Batch Inference Types
+// =====================================================================
 
-export interface ColoradoStationOverview {
-  station_id: string;
-  station_triplet: string;
-  name: string;
-  zone_id: string;
-  zone_name: string;
+export type CustomDataFormat = 'json' | 'csv';
+export type CustomDataKind = 'single' | 'batch' | 'telemetry';
+
+export interface BatchPointPredictionItem {
+  index: number;
+  location_id?: string;
   latitude: number;
   longitude: number;
-  elevation_m: number;
-  freshness_state: 'LIVE' | 'DEGRADED' | 'STALE' | 'HISTORICAL' | 'MISSING';
-  observation_age_minutes: number | null;
-  last_observation_utc: string | null;
-  provider: string;
-  latest_values: {
-    temperature?: number | null;
-    snow_depth?: number | null;
-    snow_water_equivalent?: number | null;
-    precipitation?: number | null;
-    wind_speed?: number | null;
-  };
+  prediction?: RiskPredictionResponse | null;
+  error?: string | null;
 }
 
+export interface BatchPointPredictionResponse {
+  total: number;
+  successful: number;
+  failed: number;
+  results: BatchPointPredictionItem[];
+}
+
+export interface CustomDataValidationError {
+  row?: number;
+  field?: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+export interface CustomDataValidationResult {
+  isValid: boolean;
+  format: CustomDataFormat;
+  kind: CustomDataKind;
+  recordCount: number;
+  detectedFields: string[];
+  missingRequiredFields: string[];
+  errors: CustomDataValidationError[];
+  warnings: CustomDataValidationError[];
+  parsedData: any;
+}
+
+export interface EvaluatedPointRecord {
+  id: string;
+  index: number;
+  location_id: string;
+  latitude: number;
+  longitude: number;
+  elevation: number;
+  slope: number;
+  aspect: number;
+  temperature: number;
+  humidity?: number;
+  pressure?: number;
+  snow_depth?: number;
+  snow_water_equivalent?: number;
+  snowfall_6h?: number;
+  snowfall_24h?: number;
+  snowfall_72h?: number;
+  wind_speed_mean_24h?: number;
+  wind_speed_max_24h?: number;
+  temperature_delta_24h?: number;
+  temperature_delta_72h?: number;
+  prediction?: RiskPredictionResponse;
+  status: 'SUCCESS' | 'ERROR';
+  errorMessage?: string;
+}
+
+export interface BatchSummaryStats {
+  total: number;
+  lowCount: number;
+  mediumCount: number;
+  highCount: number;
+  insufficientCount: number;
+  avgRiskScore: number;
+  highestRiskLocation: {
+    name: string;
+    score: number;
+    level: RiskLevel;
+  } | null;
+  rulesTriggeredCount: number;
+}
+
+export interface FieldSchemaDefinition {
+  key: string;
+  label: string;
+  type: 'number' | 'string' | 'object' | 'array';
+  unit?: string;
+  required: boolean;
+  defaultVal?: any;
+  min?: number;
+  max?: number;
+  description: string;
+  aliases: string[];
+}
 
 

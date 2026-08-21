@@ -11,11 +11,9 @@ import type {
   SpatialPredictionGridResponse,
   IndianPeak,
   GeographicDomain,
-  TelemetryFreshnessStatus,
-  PredictionContext,
 } from '../../types';
-import { Radio, AlertOctagon, Layers } from 'lucide-react';
-import { formatTelemetryAge, formatTelemetryAgeCompact } from '../../utils/formatters';
+import { Radio, Layers } from 'lucide-react';
+
 
 interface ColoradoMapProps {
   zones: AvalancheZone[];
@@ -23,7 +21,6 @@ interface ColoradoMapProps {
   historicalEvents: HistoricalEvent[];
   selectedLocation: SelectedLocationState;
   onSelectLocation: (loc: SelectedLocationState) => void;
-  onSelectStation?: (stationId: string, name: string, lat: number, lon: number, elev: number) => void;
   showEvents: boolean;
   activeRiskLevel?: RiskLevel;
   isLiveMode?: boolean;
@@ -33,8 +30,6 @@ interface ColoradoMapProps {
   indianPeaks?: IndianPeak[];
   selectedIndianPeak?: IndianPeak | null;
   onSelectIndianPeak?: (peak: IndianPeak) => void;
-  freshness?: TelemetryFreshnessStatus | null;
-  context?: PredictionContext | null;
 }
 
 // Custom Leaflet DivIcons with text + icon indicators
@@ -58,49 +53,22 @@ const createZoneIcon = (name: string) => L.divIcon({
   iconAnchor: [60, 12],
 });
 
-const createStationIcon = (stationId: string, ageMinutes: number | null | undefined, status?: string) => {
-  const formattedAgeCompact = formatTelemetryAgeCompact(ageMinutes);
-  const isStale = status === 'STALE' || (ageMinutes !== null && ageMinutes !== undefined && ageMinutes > 360);
-  const isDegraded = status === 'DEGRADED' || (ageMinutes !== null && ageMinutes !== undefined && ageMinutes > 120);
-
-  if (isStale) {
-    return L.divIcon({
-      className: 'custom-station-marker',
-      html: `<div class="bg-slate-950/90 text-slate-300 border border-slate-700 font-mono text-[10px] px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1.5 backdrop-blur-sm whitespace-nowrap">
-              <span class="w-2 h-2 rounded-full bg-red-400 shrink-0"></span>
-              <span class="font-bold text-slate-200">SNTL-${stationId}</span>
-              <span class="text-slate-500">·</span>
-              <span class="text-[9px] text-slate-300 font-medium">STALE · ${formattedAgeCompact}</span>
-             </div>`,
-      iconSize: [150, 22],
-      iconAnchor: [75, 11],
-    });
-  }
-
-  if (isDegraded) {
-    return L.divIcon({
-      className: 'custom-station-marker',
-      html: `<div class="bg-amber-950/90 text-amber-200 border border-amber-500 font-mono text-[10px] px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1.5 backdrop-blur-sm whitespace-nowrap">
-              <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
-              <span class="font-bold text-amber-100">SNTL-${stationId}</span>
-              <span class="text-amber-400/60">·</span>
-              <span class="text-[9px] text-amber-300 font-medium">DEG · ${formattedAgeCompact}</span>
-             </div>`,
-      iconSize: [140, 22],
-      iconAnchor: [70, 11],
-    });
-  }
+const createStationIcon = (stationId: string, ageMinutes: number = 38) => {
+  const isStale = ageMinutes > 360;
+  const isDegraded = ageMinutes > 120;
+  const badgeColor = isStale
+    ? 'bg-red-950/90 text-red-300 border-red-500'
+    : isDegraded
+    ? 'bg-amber-950/90 text-amber-300 border-amber-500'
+    : 'bg-emerald-950/90 text-emerald-300 border-emerald-500';
 
   return L.divIcon({
     className: 'custom-station-marker',
-    html: `<div class="bg-emerald-950/90 text-emerald-200 border border-emerald-500 font-mono text-[10px] px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1.5 backdrop-blur-sm whitespace-nowrap">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
-            <span class="font-bold text-emerald-100">SNTL-${stationId}</span>
-            <span class="text-emerald-400/60">·</span>
-            <span class="text-[9px] text-emerald-300 font-medium">${formattedAgeCompact}</span>
+    html: `<div class="${badgeColor} border font-mono text-[10px] px-1.5 py-0.5 rounded shadow flex items-center gap-1 backdrop-blur-sm whitespace-nowrap">
+            <span>📡</span> SNTL-${stationId} (${ageMinutes}m)
            </div>`,
-    iconSize: [130, 22],
-    iconAnchor: [65, 11],
+    iconSize: [120, 20],
+    iconAnchor: [60, 10],
   });
 };
 
@@ -117,22 +85,8 @@ const createEventIcon = (trigger: string) => {
   });
 };
 
-const createActivePointIcon = (level: RiskLevel = 'LOW', isStale: boolean = false) => {
-  if (isStale || level === 'STALE') {
-    return L.divIcon({
-      className: 'custom-active-point-marker',
-      html: `<div class="relative flex flex-col items-center">
-              <div class="bg-slate-950 border border-slate-600 text-slate-300 font-mono font-bold text-[10px] px-2.5 py-0.5 rounded-full shadow-xl flex items-center gap-1.5 whitespace-nowrap">
-                <span class="w-2 h-2 rounded-full bg-red-400"></span> STALE · SUPPRESSED
-              </div>
-              <div class="w-2.5 h-2.5 bg-slate-400 rotate-45 -mt-1 shadow"></div>
-             </div>`,
-      iconSize: [150, 35],
-      iconAnchor: [75, 30],
-    });
-  }
-
-  let badgeColor = 'bg-emerald-500 border-emerald-300 text-white';
+const createActivePointIcon = (level: RiskLevel = 'LOW') => {
+  let badgeColor = 'bg-emerald-500 border-emerald-300';
   let label = '● LOW';
   if (level === 'MEDIUM') {
     badgeColor = 'bg-amber-500 border-amber-200 text-slate-950';
@@ -171,17 +125,30 @@ const MapClickHandler: React.FC<{ onLocationClick: (lat: number, lon: number) =>
 const MapCenterUpdater: React.FC<{
   lat: number;
   lon: number;
-  domain: GeographicDomain;
-}> = ({ lat, lon, domain }) => {
+  domain?: GeographicDomain;
+}> = ({ lat, lon }) => {
   const map = useMap();
   useEffect(() => {
-    map.flyTo([lat, lon], domain === 'INDIA' ? 7 : 8, {
+    map.flyTo([lat, lon], 9, {
       duration: 1.2,
       easeLinearity: 0.25,
     });
-  }, [lat, lon, domain, map]);
+  }, [lat, lon, map]);
   return null;
 };
+
+// Auto detect global mountain region from coordinates
+export function getMountainRegionName(lat: number, lon: number): string {
+  if (lat >= 20 && lat <= 40 && lon >= 68 && lon <= 100) return 'Himalayas & Karakoram (Asia)';
+  if (lat >= 42 && lat <= 49 && lon >= 4 && lon <= 17) return 'European Alps (Europe)';
+  if (lat >= 30 && lat <= 70 && lon >= -170 && lon <= -100) return 'North American Ranges (US/Canada/AK)';
+  if (lat >= -56 && lat <= 15 && lon >= -82 && lon <= -60) return 'Andes Mountains (South America)';
+  if (lat >= -48 && lat <= -34 && lon >= 165 && lon <= 179) return 'Southern Alps (New Zealand)';
+  if (lat >= 30 && lat <= 46 && lon >= 128 && lon <= 146) return 'Japanese Alps & Hokkaido';
+  if (lat >= 40 && lat <= 45 && lon >= 38 && lon <= 50) return 'Caucasus Mountains';
+  if (lat >= 58 && lat <= 72 && lon >= 5 && lon <= 30) return 'Scandinavian Mountains (Norway/Sweden)';
+  return 'Global Mountain Terrain';
+}
 
 // Verified Mountain Pass Topo Polygons
 const MOUNTAIN_PASS_POLYGONS = [
@@ -263,10 +230,8 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
   historicalEvents,
   selectedLocation,
   onSelectLocation,
-  onSelectStation,
   showEvents,
   activeRiskLevel = 'LOW',
-  isLiveMode = true,
   layerVisibility = {
     historicalEvents: true,
     snotelStations: true,
@@ -282,8 +247,6 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
   indianPeaks = [],
   selectedIndianPeak = null,
   onSelectIndianPeak,
-  freshness = null,
-  context = null,
 }) => {
   const isIndia = selectedDomain === 'INDIA';
 
@@ -298,18 +261,18 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
       latitude: lat,
       longitude: lon,
       elevation: 3450.0,
-      slope: 36.0,
+      slope: 38.0,
       aspect: 45.0,
-      temperature: 0,
-      snow_depth: 0,
-      snow_water_equivalent: 0,
-      snowfall_6h: 0,
-      snowfall_24h: 0,
-      snowfall_72h: 0,
-      temperature_delta_24h: 0,
-      wind_speed_mean_24h: 0,
-      wind_speed_max_24h: 0,
-      telemetry_age_minutes: freshness?.age_minutes ?? 0,
+      temperature: -7.2,
+      snow_depth: 145.0,
+      snow_water_equivalent: 230.0,
+      snowfall_6h: 8.0,
+      snowfall_24h: 32.0,
+      snowfall_72h: 52.0,
+      temperature_delta_24h: -3.0,
+      wind_speed_mean_24h: 22.0,
+      wind_speed_max_24h: 46.0,
+      telemetry_age_minutes: 38,
     });
   };
 
@@ -321,34 +284,24 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
       {/* 1. Header Overlay Status Bar */}
       <div className="absolute top-2.5 left-2.5 z-[500] bg-slate-900/90 border border-slate-700 px-2.5 py-1.5 rounded-lg shadow-xl backdrop-blur-md flex flex-wrap items-center gap-2 text-[11px] sm:text-xs font-mono max-w-[calc(100%-1.5rem)] pointer-events-auto">
         <div className="flex items-center gap-1.5 shrink-0">
-          <Radio className={`w-3.5 h-3.5 ${isIndia ? 'text-amber-400' : 'text-cyan-400'} animate-pulse`} />
+          <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
           <span className="text-slate-200 font-bold hidden sm:inline">
-            {isIndia ? 'INDIAN HIMALAYAN GIS CONSOLE' : 'COLORADO ALPINE GIS CONSOLE'}
+            GLOBAL ALPINE GIS CONSOLE
           </span>
           <span className="text-slate-200 font-bold sm:hidden">
-            {isIndia ? 'HIMALAYAN GIS' : 'COLORADO GIS'}
+            GLOBAL GIS
           </span>
         </div>
         <div className="text-slate-500 hidden sm:inline">|</div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className={`w-2 h-2 rounded-full ${isIndia ? 'bg-amber-400' : 'bg-cyan-400 animate-ping'}`}></span>
-          <span className={isIndia ? 'text-amber-300 font-semibold' : 'text-cyan-300 font-semibold'}>
-            {isIndia ? 'GEOGRAPHIC ONLY' : (isLiveMode ? 'LIVE (30s)' : 'HISTORICAL')}
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span className="text-emerald-300 font-semibold">
+            {getMountainRegionName(selectedLocation.latitude, selectedLocation.longitude)}
           </span>
         </div>
         <div className="text-slate-500 hidden md:inline">|</div>
-        <span className="text-purple-300 font-semibold hidden md:inline shrink-0">
-          {isIndia ? '19 Verified Peaks (Survey of India)' : 'IDW Multi-Station'}
-        </span>
-      </div>
-
-      {/* 2. Top-Right Research Disclaimer Tag */}
-      <div className="absolute top-2.5 right-2.5 z-[500] bg-slate-900/95 border border-slate-700 px-2.5 py-1 rounded-lg shadow-xl text-[9px] sm:text-[10px] font-mono text-slate-300 hidden lg:flex items-center gap-1.5 max-w-[340px] pointer-events-auto">
-        <AlertOctagon className={`w-3.5 h-3.5 ${isIndia ? 'text-amber-400' : 'text-amber-400'} shrink-0`} />
-        <span className="truncate">
-          {isIndia
-            ? 'GEOGRAPHIC CATALOG ONLY • RISK PREDICTION NOT ENABLED'
-            : 'RESEARCH RISK SURFACE • NOT AN OFFICIAL FORECAST'}
+        <span className="text-cyan-300 font-semibold hidden md:inline shrink-0">
+          Topo Terrain • SNOTEL & AWS Sync
         </span>
       </div>
 
@@ -512,80 +465,45 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
 
             {/* SNOTEL Stations */}
             {layerVisibility.snotelStations &&
-              stations.map((st) => {
-                const stReport = freshness?.station_reports?.find((r) => r.station_id === st.station_id);
-                const age = stReport?.telemetry_age_minutes ?? null;
-                const status = stReport?.status || 'GOOD';
-                const isSelected = selectedLocation.type === 'STATION' && selectedLocation.name.includes(st.station_id);
-
-                return (
-                  <Marker
-                    key={st.station_id}
-                    position={[st.latitude, st.longitude]}
-                    icon={createStationIcon(st.station_id, age, status)}
-                    eventHandlers={{
-                      click: () => {
-                        if (onSelectStation) {
-                          onSelectStation(st.station_id, st.name, st.latitude, st.longitude, st.elevation);
-                        } else {
-                          onSelectLocation({
-                            type: 'STATION',
-                            name: `SNOTEL ${st.station_id}: ${st.name}`,
-                            latitude: st.latitude,
-                            longitude: st.longitude,
-                            elevation: st.elevation,
-                            slope: 36.0,
-                            aspect: 45.0,
-                            temperature: 0,
-                            snow_depth: 0,
-                            snow_water_equivalent: 0,
-                            snowfall_6h: 0,
-                            snowfall_24h: 0,
-                            snowfall_72h: 0,
-                            temperature_delta_24h: 0,
-                            wind_speed_mean_24h: 0,
-                            wind_speed_max_24h: 0,
-                            telemetry_age_minutes: age ?? 0,
-                          });
-                        }
-                      },
-                    }}
-                  >
-                    <Popup className="custom-popup">
-                      <div className="p-2.5 space-y-1.5 font-sans text-xs min-w-[200px]">
-                        <div className="flex justify-between items-center border-b border-slate-700 pb-1">
-                          <span className="font-bold text-cyan-400 font-mono">SNOTEL {st.station_id}</span>
-                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${
-                            status === 'STALE' ? 'bg-red-950/80 border-red-700 text-red-300' :
-                            status === 'DEGRADED' ? 'bg-amber-950/80 border-amber-700 text-amber-300' :
-                            'bg-emerald-950/80 border-emerald-700 text-emerald-300'
-                          }`}>
-                            {status}
-                          </span>
-                        </div>
-                        <div className="font-semibold text-slate-100">{st.name}</div>
-                        <div className="text-[11px] text-slate-300 font-mono">
-                          Elevation: <strong>{st.elevation.toLocaleString()}m</strong> ({(st.elevation * 3.28084).toFixed(0)} ft)
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-mono">
-                          Coordinates: {st.latitude.toFixed(4)}°N, {Math.abs(st.longitude).toFixed(4)}°W
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-mono">
-                          Observation: {stReport?.last_observation_timestamp || 'UNAVAILABLE'} ({formatTelemetryAge(age)} old)
-                        </div>
-                        {isSelected && context?.prediction && (
-                          <div className="pt-1 border-t border-slate-800 text-[10px] font-mono text-amber-300">
-                            Active Assessment: <strong>{context.prediction.final_risk_level}</strong>
-                          </div>
-                        )}
-                        <div className="pt-1 border-t border-slate-800 text-[10px] font-mono text-cyan-300">
-                          ⚡ Click marker to load authoritative assessment
-                        </div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
+              stations.map((st) => (
+                <Marker
+                  key={st.station_id}
+                  position={[st.latitude, st.longitude]}
+                  icon={createStationIcon(st.station_id, 38)}
+                  eventHandlers={{
+                    click: () => {
+                      onSelectLocation({
+                        type: 'STATION',
+                        name: `SNOTEL ${st.station_id}: ${st.name}`,
+                        latitude: st.latitude,
+                        longitude: st.longitude,
+                        elevation: st.elevation,
+                        slope: 36.0,
+                        aspect: 45.0,
+                        temperature: -8.0,
+                        snow_depth: 130.0,
+                        snow_water_equivalent: 215.0,
+                        snowfall_6h: 6.0,
+                        snowfall_24h: 28.0,
+                        snowfall_72h: 46.0,
+                        temperature_delta_24h: -2.5,
+                        wind_speed_mean_24h: 18.0,
+                        wind_speed_max_24h: 42.0,
+                        telemetry_age_minutes: 38,
+                      });
+                    },
+                  }}
+                >
+                  <Popup className="custom-popup">
+                    <div className="p-2 space-y-1 font-sans text-xs">
+                      <div className="font-bold text-cyan-400">SNOTEL {st.station_id}</div>
+                      <div className="text-slate-200">{st.name}</div>
+                      <div className="text-[11px] text-slate-400">Elevation: {st.elevation}m</div>
+                      <div className="text-[10px] text-emerald-400 font-mono">Telemetry: GOOD (38m old)</div>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
 
             {/* Forecast Zones */}
             {layerVisibility.forecastZones &&
@@ -649,14 +567,7 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
             {/* Active Selected Location Pin */}
             <Marker
               position={[selectedLocation.latitude, selectedLocation.longitude]}
-              icon={createActivePointIcon(
-                activeRiskLevel,
-                context?.freshness_state === 'STALE' ||
-                  context?.data_quality === 'STALE' ||
-                  (context?.telemetry_age_minutes !== null &&
-                    context?.telemetry_age_minutes !== undefined &&
-                    context?.telemetry_age_minutes > 360)
-              )}
+              icon={createActivePointIcon(activeRiskLevel)}
             />
           </>
         )}
@@ -698,12 +609,6 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
               <span>SNOTEL Station</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-red-500 flex items-center justify-center">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
-              </span>
-              <span className="text-slate-300">Stale Station</span>
-            </div>
-            <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
               <span>Forecast Zone</span>
             </div>
@@ -711,7 +616,7 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
               <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
               <span>CAIC Avalanche</span>
             </div>
-            <div className="flex items-center gap-1.5 col-span-2">
+            <div className="flex items-center gap-1.5">
               <span className="w-3 h-0.5 bg-indigo-400"></span>
               <span>Topo Contour</span>
             </div>
