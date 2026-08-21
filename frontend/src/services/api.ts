@@ -801,14 +801,14 @@ Nanga Parbat - Rupal Flank (Himalayas),35.237,74.589,7000,54.0,160,-20.0,240,400
 Manaslu - High Camp Slopes (Himalayas),28.549,84.564,6800,43.0,45,-17.0,210,350,42.0,80.0,32.0,65.0
 Nanda Devi Sanctuary Ridge (India),30.375,79.970,4400,39.0,40,-12.0,210,340,36.0,68.0,30.0,60.0
 Kedarnath Peak Avalanche Gully (India),30.735,79.066,3580,38.5,65,-8.5,175,270,28.0,52.0,24.0,48.0
-Rohtang Pass (Pir Panjal, India),32.371,77.246,3978,41.0,30,-10.0,240,390,44.0,82.0,45.0,78.0
-Khardung La North Ridge (Ladakh, India),34.279,77.604,5359,34.0,10,-18.0,95,145,15.0,28.0,35.0,62.0
+Rohtang Pass (Pir Panjal - India),32.371,77.246,3978,41.0,30,-10.0,240,390,44.0,82.0,45.0,78.0
+Khardung La North Ridge (Ladakh - India),34.279,77.604,5359,34.0,10,-18.0,95,145,15.0,28.0,35.0,62.0
 Zojila Pass Avalanche Highway (India),34.280,75.800,3528,40.0,45,-11.0,230,370,46.0,88.0,38.0,74.0
 Gulmarg Apharwat Peak (Kashmir),34.015,74.380,4124,39.0,350,-9.0,260,420,40.0,76.0,32.0,64.0
 Nathu La Pass (Sikkim Himalayas),27.386,88.831,4310,37.0,80,-6.0,180,290,30.0,55.0,28.0,54.0
 Siachen Base Camp Slopes (Karakoram),35.420,77.108,3658,37.5,120,-15.0,170,260,25.0,48.0,26.0,52.0
 Kamet East Ridge (Garhwal),30.926,79.571,7756,41.0,90,-21.0,180,290,32.0,60.0,34.0,68.0
-Kangchenjunga High Flank (Sikkim/Nepal),27.702,88.147,7500,46.0,240,-19.0,250,410,48.0,92.0,40.0,78.0
+Kangchenjunga High Flank (Sikkim - Nepal),27.702,88.147,7500,46.0,240,-19.0,250,410,48.0,92.0,40.0,78.0
 Mont Blanc - Grand Couloir (French Alps),45.832,6.865,3800,42.5,310,-12.0,280,450,46.0,88.0,38.0,76.0
 Matterhorn - East Face (Swiss Alps),45.976,7.658,4000,45.0,90,-14.0,230,370,40.0,75.0,35.0,70.0
 Eiger - North Face & West Flank (Swiss Alps),46.577,8.005,3500,50.0,350,-13.0,250,400,48.0,92.0,36.0,74.0
@@ -819,44 +819,44 @@ Chamonix - Aiguille du Midi (France),45.877,6.887,3842,43.0,330,-12.5,290,460,48
 St. Anton am Arlberg - Valluga (Austria),47.133,10.267,2811,42.0,360,-9.0,260,410,45.0,85.0,36.0,72.0
 Val Thorens - Cime Caron (French Alps),45.298,6.580,3195,39.0,45,-8.5,240,380,36.0,68.0,30.0,62.0
 Verbier - Mont Fort (Swiss Alps),46.083,7.316,3328,40.0,315,-10.0,250,390,38.0,72.0,34.0,68.0
-Monte Rosa - Dufourspitze (Italy/Switzerland),45.937,7.867,4500,44.0,135,-15.0,280,440,44.0,86.0,38.0,75.0
+Monte Rosa - Dufourspitze (Italy - Switzerland),45.937,7.867,4500,44.0,135,-15.0,280,440,44.0,86.0,38.0,75.0
 Cortina d'Ampezzo - Tofana (Dolomites),46.541,12.051,3225,38.5,120,-7.0,200,310,26.0,50.0,25.0,50.0
-Marmolada Glacier (Dolomites, Italy),46.434,11.851,3343,39.0,0,-8.0,220,350,32.0,62.0,30.0,60.0
+Marmolada Glacier (Dolomites - Italy),46.434,11.851,3343,39.0,0,-8.0,220,350,32.0,62.0,30.0,60.0
 Gotthard Pass High Basin (Switzerland),46.559,8.565,2106,36.0,90,-5.0,190,290,24.0,46.0,24.0,48.0
-Stelvio Pass Corridor (Ortler Alps, Italy),46.529,10.453,2757,37.0,60,-7.5,210,320,30.0,58.0,28.0,56.0
+Stelvio Pass Corridor (Ortler Alps - Italy),46.529,10.453,2757,37.0,60,-7.5,210,320,30.0,58.0,28.0,56.0
 Denali - Kahiltna Pass (Alaska Range),63.069,-151.007,4300,43.0,225,-26.0,310,480,52.0,105.0,45.0,92.0
 Mount Rainier - Disappointment Cleaver (Cascades),46.853,-121.760,3700,41.0,90,-11.0,380,620,60.0,120.0,42.0,85.0
 Mount Whitney - East Couloir (Sierra Nevada),36.578,-118.292,4200,38.0,75,-8.0,190,290,22.0,44.0,28.0,56.0
 Grand Teton - Headwall Chute (Wyoming),43.741,-110.802,3900,44.0,60,-14.0,250,390,42.0,82.0,36.0,74.0
 Berthoud Pass Summit (Colorado Front Range),39.798,-105.778,3444,40.0,45,-5.5,165,280,36.0,58.0,32.0,62.0
 Loveland Pass - Seven Sisters (Colorado),39.674,-105.897,3655,38.0,60,-6.2,150,240,28.0,44.0,28.0,52.0
-Red Mountain Pass (San Juan Mountains, CO),37.899,-107.714,3414,42.0,30,-4.0,190,340,48.0,85.0,40.0,75.0
-Rogers Pass (Selkirk Mountains, BC Canada),51.300,-117.520,1330,41.0,45,-6.0,340,550,54.0,108.0,38.0,78.0
+Red Mountain Pass (San Juan Mountains - CO),37.899,-107.714,3414,42.0,30,-4.0,190,340,48.0,85.0,40.0,75.0
+Rogers Pass (Selkirk Mountains - BC Canada),51.300,-117.520,1330,41.0,45,-6.0,340,550,54.0,108.0,38.0,78.0
 Whistler Peak - Harmony Horseshoe (BC Canada),50.060,-122.957,2181,39.0,315,-5.0,310,490,48.0,95.0,35.0,70.0
 Mount Washington - Tuckerman Ravine (NH),44.270,-71.303,1500,45.0,90,-16.0,260,420,44.0,88.0,55.0,115.0
 Mount Baker - Coleman Glacier (Cascades),48.777,-121.813,2800,39.0,270,-7.0,420,680,65.0,130.0,40.0,82.0
 Mount Shasta - Avalanche Gulch (California),41.409,-122.195,3800,38.0,180,-8.0,280,440,38.0,74.0,34.0,70.0
-Independence Pass (Sawatch Range, CO),39.108,-106.602,3688,39.0,75,-9.5,145,230,22.0,38.0,25.0,48.0
+Independence Pass (Sawatch Range - CO),39.108,-106.602,3688,39.0,75,-9.5,145,230,22.0,38.0,25.0,48.0
 Thompson Pass - Chugach Range (Alaska),61.129,-145.741,855,42.5,180,-8.0,480,780,72.0,145.0,46.0,94.0
-Haines Pass (Saint Elias Mountains, BC/AK),59.870,-136.550,1070,37.0,120,-12.0,320,510,42.0,84.0,38.0,76.0
-Aconcagua - Polish Glacier (Andes, Argentina),-32.653,-70.011,6200,42.0,45,-19.0,160,240,30.0,58.0,44.0,92.0
-Huascarán - North Face (Cordillera Blanca, Peru),-9.122,-77.603,6400,48.0,350,-15.0,230,360,46.0,90.0,36.0,74.0
+Haines Pass (Saint Elias Mountains - BC/AK),59.870,-136.550,1070,37.0,120,-12.0,320,510,42.0,84.0,38.0,76.0
+Aconcagua - Polish Glacier (Andes - Argentina),-32.653,-70.011,6200,42.0,45,-19.0,160,240,30.0,58.0,44.0,92.0
+Huascarán - North Face (Cordillera Blanca - Peru),-9.122,-77.603,6400,48.0,350,-15.0,230,360,46.0,90.0,36.0,74.0
 Alpamayo - Ferrari Flank (Peru),-8.879,-77.653,5800,55.0,225,-16.5,210,330,40.0,80.0,32.0,66.0
 Chimborazo - Whymper Flank (Ecuador),-1.469,-78.817,6100,43.0,270,-14.0,180,280,32.0,62.0,38.0,76.0
 Cotopaxi - North Glacier Chute (Ecuador),-0.680,-78.436,5600,39.0,0,-12.0,170,260,28.0,54.0,34.0,68.0
-Paso Los Libertadores / Portillo (Chile/Arg),-32.827,-70.075,3200,40.0,135,-7.0,240,380,44.0,86.0,40.0,82.0
+Paso Los Libertadores / Portillo (Chile - Argentina),-32.827,-70.075,3200,40.0,135,-7.0,240,380,44.0,86.0,40.0,82.0
 Cerro Fitz Roy - Supercanaleta (Patagonia),-49.271,-73.043,3100,50.0,270,-9.0,290,460,50.0,102.0,52.0,110.0
 Torres del Paine - Central Towers (Chile),-50.942,-72.934,2600,46.0,180,-8.0,270,420,45.0,90.0,48.0,105.0
 Aoraki / Mount Cook - Linda Glacier (NZ),-43.595,170.142,3500,45.0,45,-11.0,350,560,58.0,115.0,44.0,90.0
-Mount Aspiring / Tititea (Southern Alps, NZ),-44.385,168.728,2800,44.0,315,-10.0,320,510,50.0,100.0,40.0,84.0
-Milford Sound Avalanche Highway (SH94, NZ),-44.765,167.989,945,48.0,270,-4.0,390,620,68.0,135.0,45.0,95.0
-The Remarkables - Shadow Basin (Queenstown, NZ),-45.054,168.814,2100,39.0,180,-6.0,210,330,32.0,62.0,32.0,68.0
-Mount Elbrus - Pastukhov Slopes (Caucasus, Russia),43.349,42.445,4800,38.0,180,-18.0,260,410,40.0,78.0,42.0,86.0
+Mount Aspiring / Tititea (Southern Alps - NZ),-44.385,168.728,2800,44.0,315,-10.0,320,510,50.0,100.0,40.0,84.0
+Milford Sound Avalanche Highway (SH94 - NZ),-44.765,167.989,945,48.0,270,-4.0,390,620,68.0,135.0,45.0,95.0
+The Remarkables - Shadow Basin (Queenstown - NZ),-45.054,168.814,2100,39.0,180,-6.0,210,330,32.0,62.0,32.0,68.0
+Mount Elbrus - Pastukhov Slopes (Caucasus - Russia),43.349,42.445,4800,38.0,180,-18.0,260,410,40.0,78.0,42.0,86.0
 Mount Kazbek - Gergeti Glacier (Georgia),42.698,44.518,4500,43.0,90,-16.0,240,370,38.0,74.0,36.0,74.0
-Gudauri Pass (Military Highway, Caucasus),42.478,44.475,2379,39.0,45,-8.0,220,340,35.0,68.0,30.0,62.0
+Gudauri Pass (Military Highway - Caucasus),42.478,44.475,2379,39.0,45,-8.0,220,340,35.0,68.0,30.0,62.0
 Mount Fuji - Subashiri Couloirs (Japan),35.361,138.727,3500,38.0,90,-15.0,190,290,30.0,60.0,45.0,90.0
 Mount Hakuba - Happo-One North Face (Japan),36.698,137.760,2700,41.0,0,-10.0,380,610,62.0,125.0,38.0,80.0
-Mount Yotei / Niseko Backcountry (Hokkaido, Japan),42.827,140.812,1800,40.0,315,-8.0,420,670,66.0,132.0,36.0,74.0
+Mount Yotei / Niseko Backcountry (Hokkaido - Japan),42.827,140.812,1800,40.0,315,-8.0,420,670,66.0,132.0,36.0,74.0
 Galdhøpiggen - Jotunheimen (Norway),61.636,8.312,2400,39.0,45,-12.0,250,390,36.0,70.0,35.0,72.0
 Tromsø - Lyngen Alps Avalanche Fjords (Norway),69.583,20.150,1600,44.0,315,-9.0,310,490,52.0,104.0,42.0,88.0`,
 
@@ -890,7 +890,7 @@ Val Thorens - Cime Caron (France),45.298,6.580,3195,39.0,45,-8.5,240,380,36.0,68
 Verbier - Mont Fort (Switzerland),46.083,7.316,3328,40.0,315,-10.0,250,390,38.0,72.0,34.0,68.0
 Monte Rosa - Dufourspitze (Italy),45.937,7.867,4500,44.0,135,-15.0,280,440,44.0,86.0,38.0,75.0
 Cortina d'Ampezzo - Tofana (Italy),46.541,12.051,3225,38.5,120,-7.0,200,310,26.0,50.0,25.0,50.0
-Marmolada Glacier (Dolomites, Italy),46.434,11.851,3343,39.0,0,-8.0,220,350,32.0,62.0,30.0,60.0
+Marmolada Glacier (Dolomites - Italy),46.434,11.851,3343,39.0,0,-8.0,220,350,32.0,62.0,30.0,60.0
 Gotthard Pass High Basin (Switzerland),46.559,8.565,2106,36.0,90,-5.0,190,290,24.0,46.0,24.0,48.0
 Stelvio Pass Corridor (Italy),46.529,10.453,2757,37.0,60,-7.5,210,320,30.0,58.0,28.0,56.0`,
 
@@ -902,26 +902,26 @@ Grand Teton - Headwall Chute (WY),43.741,-110.802,3900,44.0,60,-14.0,250,390,42.
 Berthoud Pass Summit (Colorado),39.798,-105.778,3444,40.0,45,-5.5,165,280,36.0,58.0,32.0,62.0
 Loveland Pass - Seven Sisters (Colorado),39.674,-105.897,3655,38.0,60,-6.2,150,240,28.0,44.0,28.0,52.0
 Red Mountain Pass (Colorado),37.899,-107.714,3414,42.0,30,-4.0,190,340,48.0,85.0,40.0,75.0
-Rogers Pass (Selkirk Mtns, BC Canada),51.300,-117.520,1330,41.0,45,-6.0,340,550,54.0,108.0,38.0,78.0
+Rogers Pass (Selkirk Mtns - BC Canada),51.300,-117.520,1330,41.0,45,-6.0,340,550,54.0,108.0,38.0,78.0
 Whistler Peak - Harmony Horseshoe (BC),50.060,-122.957,2181,39.0,315,-5.0,310,490,48.0,95.0,35.0,70.0
 Mount Washington - Tuckerman Ravine (NH),44.270,-71.303,1500,45.0,90,-16.0,260,420,44.0,88.0,55.0,115.0
 Mount Baker - Coleman Glacier (WA),48.777,-121.813,2800,39.0,270,-7.0,420,680,65.0,130.0,40.0,82.0
 Mount Shasta - Avalanche Gulch (CA),41.409,-122.195,3800,38.0,180,-8.0,280,440,38.0,74.0,34.0,70.0
 Independence Pass (Colorado),39.108,-106.602,3688,39.0,75,-9.5,145,230,22.0,38.0,25.0,48.0
 Thompson Pass - Chugach Range (Alaska),61.129,-145.741,855,42.5,180,-8.0,480,780,72.0,145.0,46.0,94.0
-Haines Pass (Saint Elias Mtns, BC/AK),59.870,-136.550,1070,37.0,120,-12.0,320,510,42.0,84.0,38.0,76.0
+Haines Pass (Saint Elias Mtns - BC/AK),59.870,-136.550,1070,37.0,120,-12.0,320,510,42.0,84.0,38.0,76.0
 Aconcagua - Polish Glacier (Argentina),-32.653,-70.011,6200,42.0,45,-19.0,160,240,30.0,58.0,44.0,92.0
 Huascarán - North Face (Peru),-9.122,-77.603,6400,48.0,350,-15.0,230,360,46.0,90.0,36.0,74.0
 Alpamayo - Ferrari Flank (Peru),-8.879,-77.653,5800,55.0,225,-16.5,210,330,40.0,80.0,32.0,66.0
 Chimborazo - Whymper Flank (Ecuador),-1.469,-78.817,6100,43.0,270,-14.0,180,280,32.0,62.0,38.0,76.0
-Paso Los Libertadores / Portillo (Chile/Arg),-32.827,-70.075,3200,40.0,135,-7.0,240,380,44.0,86.0,40.0,82.0
+Paso Los Libertadores / Portillo (Chile - Argentina),-32.827,-70.075,3200,40.0,135,-7.0,240,380,44.0,86.0,40.0,82.0
 Cerro Fitz Roy - Supercanaleta (Patagonia),-49.271,-73.043,3100,50.0,270,-9.0,290,460,50.0,102.0,52.0,110.0
 Torres del Paine - Central Towers (Chile),-50.942,-72.934,2600,46.0,180,-8.0,270,420,45.0,90.0,48.0,105.0`,
 
   japan_oceania_scandi_csv: `location_id,latitude,longitude,elevation,slope,aspect,temperature,snow_depth,snow_water_equivalent,snowfall_24h,snowfall_72h,wind_speed_mean_24h,wind_speed_max_24h
 Aoraki / Mount Cook - Linda Glacier (NZ),-43.595,170.142,3500,45.0,45,-11.0,350,560,58.0,115.0,44.0,90.0
 Mount Aspiring / Tititea (NZ),-44.385,168.728,2800,44.0,315,-10.0,320,510,50.0,100.0,40.0,84.0
-Milford Sound Avalanche Highway (SH94, NZ),-44.765,167.989,945,48.0,270,-4.0,390,620,68.0,135.0,45.0,95.0
+Milford Sound Avalanche Highway (SH94 - NZ),-44.765,167.989,945,48.0,270,-4.0,390,620,68.0,135.0,45.0,95.0
 The Remarkables - Shadow Basin (NZ),-45.054,168.814,2100,39.0,180,-6.0,210,330,32.0,62.0,32.0,68.0
 Mount Fuji - Subashiri Couloirs (Japan),35.361,138.727,3500,38.0,90,-15.0,190,290,30.0,60.0,45.0,90.0
 Mount Hakuba - Happo-One (Japan),36.698,137.760,2700,41.0,0,-10.0,380,610,62.0,125.0,38.0,80.0
@@ -936,6 +936,34 @@ Gudauri Pass (Caucasus Highway),42.478,44.475,2379,39.0,45,-8.0,220,340,35.0,68.
 // =====================================================================
 // CSV Parser & Auto-Mapper
 // =====================================================================
+
+function tokenizeCsvRow(line: string, delimiter: string, expectedColCount: number): string[] {
+  const tokens: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"' || char === "'") {
+      inQuotes = !inQuotes;
+    } else if (char === delimiter && !inQuotes) {
+      tokens.push(cur.trim().replace(/^["']|["']$/g, ''));
+      cur = '';
+    } else {
+      cur += char;
+    }
+  }
+  tokens.push(cur.trim().replace(/^["']|["']$/g, ''));
+
+  // If excess tokens exist (e.g. unquoted comma in location_id), recombine the excess into location_id
+  if (expectedColCount > 0 && tokens.length > expectedColCount) {
+    const excess = tokens.length - expectedColCount;
+    const recombinedLoc = tokens.slice(0, excess + 1).join(' - ');
+    tokens.splice(0, excess + 1, recombinedLoc);
+  }
+
+  return tokens;
+}
 
 export function parseCSV(csvText: string): {
   data: PointPredictionPayload[];
@@ -961,9 +989,7 @@ export function parseCSV(csvText: string): {
   else if (semiCount > commaCount && semiCount > tabCount) delimiter = ';';
 
   // Parse header tokens
-  const rawHeaders = headerLine
-    .split(delimiter)
-    .map((h) => h.trim().replace(/^["']|["']$/g, ''));
+  const rawHeaders = tokenizeCsvRow(headerLine, delimiter, 0);
 
   const mappedHeaders: Record<string, string> = {};
 
@@ -981,7 +1007,7 @@ export function parseCSV(csvText: string): {
 
   for (let lineIdx = 1; lineIdx < lines.length; lineIdx++) {
     const line = lines[lineIdx];
-    const tokens = line.split(delimiter).map((t) => t.trim().replace(/^["']|["']$/g, ''));
+    const tokens = tokenizeCsvRow(line, delimiter, rawHeaders.length);
 
     if (tokens.length < rawHeaders.length && tokens.every((t) => t === '')) continue;
 
