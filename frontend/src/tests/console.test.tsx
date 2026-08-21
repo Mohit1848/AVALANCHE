@@ -20,9 +20,8 @@ import type {
   LayerVisibilityState,
   IndianPeak,
   IndianRegion,
+  PredictionContext,
 } from '../types';
-
-
 
 describe('Phase 4 & 5: Mountain Risk Intelligence Console - Verification Suite', () => {
   const dummyLocation: SelectedLocationState = {
@@ -44,6 +43,48 @@ describe('Phase 4 & 5: Mountain Risk Intelligence Console - Verification Suite',
     wind_speed_max_24h: 48.0,
     telemetry_age_minutes: 38,
   };
+
+  function createTestContext(
+    loc: SelectedLocationState,
+    pred: RiskPredictionResponse | null,
+    isLoading = false
+  ): PredictionContext {
+    return {
+      target_id: loc.name,
+      target_name: loc.name,
+      target_type: 'COORDINATE',
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      elevation: loc.elevation,
+      slope: loc.slope,
+      aspect: loc.aspect,
+      temperature: loc.temperature,
+      humidity: loc.humidity ?? 65,
+      pressure: loc.pressure ?? 700,
+      precipitation: loc.precipitation ?? 0,
+      wind_speed_mean_24h: loc.wind_speed_mean_24h,
+      wind_speed_max_24h: loc.wind_speed_max_24h,
+      snow_depth: loc.snow_depth,
+      snow_water_equivalent: loc.snow_water_equivalent,
+      snowfall_6h: loc.snowfall_6h,
+      snowfall_24h: loc.snowfall_24h,
+      snowfall_72h: loc.snowfall_72h,
+      temperature_delta_24h: loc.temperature_delta_24h,
+      temperature_delta_72h: loc.temperature_delta_72h ?? null,
+      telemetry_timestamp: new Date().toISOString(),
+      telemetry_age_minutes: loc.telemetry_age_minutes ?? 0,
+      data_quality: pred?.data_quality ?? 'GOOD',
+      freshness_state: 'GOOD',
+      assessment_status: 'CURRENT',
+      prediction_available: !!pred,
+      suppression_reason: null,
+      current_utc: new Date().toISOString(),
+      telemetry_status: 'GOOD',
+      last_observation_timestamp: new Date().toISOString(),
+      prediction: pred,
+      isLoading,
+    };
+  }
 
   it('1. Renders FRESH telemetry & LOW risk prediction', () => {
     const lowPred: RiskPredictionResponse = {
@@ -67,9 +108,7 @@ describe('Phase 4 & 5: Mountain Risk Intelligence Console - Verification Suite',
 
     render(
       <RiskAssessmentPanel
-        prediction={lowPred}
-        selectedLocation={dummyLocation}
-        isLoading={false}
+        context={createTestContext(dummyLocation, lowPred)}
         onRefresh={() => {}}
       />
     );
@@ -106,9 +145,7 @@ describe('Phase 4 & 5: Mountain Risk Intelligence Console - Verification Suite',
 
     render(
       <RiskAssessmentPanel
-        prediction={stalePred}
-        selectedLocation={staleLocation}
-        isLoading={false}
+        context={createTestContext(staleLocation, stalePred)}
         onRefresh={() => {}}
       />
     );
@@ -141,9 +178,7 @@ describe('Phase 4 & 5: Mountain Risk Intelligence Console - Verification Suite',
 
     render(
       <RiskAssessmentPanel
-        prediction={escalatedPred}
-        selectedLocation={dummyLocation}
-        isLoading={false}
+        context={createTestContext(dummyLocation, escalatedPred)}
         onRefresh={() => {}}
       />
     );
@@ -175,9 +210,7 @@ describe('Phase 4 & 5: Mountain Risk Intelligence Console - Verification Suite',
 
     render(
       <RiskAssessmentPanel
-        prediction={insufficientPred}
-        selectedLocation={dummyLocation}
-        isLoading={false}
+        context={createTestContext(dummyLocation, insufficientPred)}
         onRefresh={() => {}}
       />
     );
@@ -200,7 +233,7 @@ describe('Phase 4 & 5: Mountain Risk Intelligence Console - Verification Suite',
   });
 
   it('6. Renders Terrain Panel with scientifically grounded heuristic language', () => {
-    render(<TerrainPanel location={dummyLocation} />);
+    render(<TerrainPanel context={createTestContext(dummyLocation, null)} />);
     expect(screen.getByText('38.0°')).toBeDefined();
     expect(screen.getByText(/30°–45° Prone Range \(Heuristic\)/i)).toBeDefined();
     expect(screen.getByText(/Wind-loading assessment requires localized wind-direction telemetry/i)).toBeDefined();

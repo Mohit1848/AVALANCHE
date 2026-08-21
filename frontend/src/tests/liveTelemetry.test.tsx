@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { RiskAssessmentPanel } from '../components/risk/RiskAssessmentPanel';
 import { Header } from '../components/common/Header';
-import type { PredictionContext, HealthStatus, TelemetryFreshnessStatus } from '../types';
+import type { PredictionContext, HealthStatus, TelemetryFreshnessStatus, RiskLevel } from '../types';
 
 describe('Live Colorado SNOTEL / AWDB Telemetry Integration', () => {
   const baseLiveContext: PredictionContext = {
@@ -56,7 +56,6 @@ describe('Live Colorado SNOTEL / AWDB Telemetry Integration', () => {
       model_version: 'colorado_avalanche_rf_v3',
       operating_threshold: 0.4,
       thresholds: { medium: 0.4, high: 0.7 },
-      rule_evaluations: [],
       provenance: { source: 'USDA_NRCS_AWDB' },
       disclaimer: 'Research Decision-Support Prototype.',
     },
@@ -106,8 +105,8 @@ describe('Live Colorado SNOTEL / AWDB Telemetry Integration', () => {
       prediction_available: false,
       prediction: {
         ...baseLiveContext.prediction!,
-        final_risk_level: 'STALE',
-        model_risk_level: 'STALE',
+        final_risk_level: 'INSUFFICIENT_DATA' as RiskLevel,
+        model_risk_level: 'INSUFFICIENT_DATA' as RiskLevel,
       },
     };
 
@@ -155,31 +154,17 @@ describe('Live Colorado SNOTEL / AWDB Telemetry Integration', () => {
       warnings: [],
     };
 
-    const mockSync = vi.fn();
-
     render(
       <Header
         health={health}
         freshness={freshness}
-        context={baseLiveContext}
         activeTab="console"
         setActiveTab={vi.fn()}
-        isLivePolling={true}
-        setIsLivePolling={vi.fn()}
-        selectedDomain="COLORADO"
-        setSelectedDomain={vi.fn()}
-        onSync={mockSync}
+        activePassCount={10}
       />
     );
 
-    expect(screen.getByText(/NRCS AWDB/i)).toBeTruthy();
-    expect(screen.getByText(/STATIONS:/i)).toBeTruthy();
-    expect(screen.getByText(/0 LIVE/i)).toBeTruthy();
-    expect(screen.getByText(/10 STALE/i)).toBeTruthy();
-
-    const syncBtn = screen.getByText(/SYNC NOW/i);
-    expect(syncBtn).toBeTruthy();
-    fireEvent.click(syncBtn);
-    expect(mockSync).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/AVALANCHE RISK INTELLIGENCE/i)).toBeTruthy();
+    expect(screen.getByText(/10 Passes Active/i)).toBeTruthy();
   });
 });

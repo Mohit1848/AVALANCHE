@@ -488,8 +488,8 @@ export const RiskAssessmentPanel: React.FC<RiskAssessmentPanelProps> = ({
 
               <div className="space-y-1.5 font-mono text-[11px] max-h-56 overflow-y-auto pr-1">
                 {context.rules_evaluation && context.rules_evaluation.length > 0 ? (
-                  context.rules_evaluation.map((rule) => {
-                    const isTriggered = rule.status === 'TRIGGERED';
+                  context.rules_evaluation.map((rule: any) => {
+                    const isTriggered = rule.status === 'TRIGGERED' || rule.triggered === true;
                     return (
                       <div
                         key={rule.rule_id}
@@ -513,18 +513,20 @@ export const RiskAssessmentPanel: React.FC<RiskAssessmentPanelProps> = ({
                               isTriggered ? 'bg-amber-900/80 text-amber-200' : 'bg-slate-800 text-slate-400'
                             }`}
                           >
-                            {rule.status}
+                            {rule.status || (isTriggered ? 'TRIGGERED' : 'CLEAR')}
                           </span>
                         </div>
                         <div className="mt-1 text-[10px] text-slate-400 pl-5 space-y-0.5">
-                          <div>Condition: <span className="text-slate-300">{rule.description}</span></div>
-                          <div className="flex flex-wrap gap-2.5 text-slate-400">
-                            {Object.entries(rule.actual_values).map(([k, v]) => (
-                              <span key={k}>
-                                {k}: <strong className={isTriggered ? 'text-amber-300' : 'text-slate-200'}>{v}</strong> ({rule.thresholds[k] || ''})
-                              </span>
-                            ))}
-                          </div>
+                          <div>Condition: <span className="text-slate-300">{rule.description || rule.rationale}</span></div>
+                          {rule.actual_values && (
+                            <div className="flex flex-wrap gap-2.5 text-slate-400">
+                              {Object.entries(rule.actual_values).map(([k, v]: [string, any]) => (
+                                <span key={k}>
+                                  {k}: <strong className={isTriggered ? 'text-amber-300' : 'text-slate-200'}>{String(v)}</strong> ({rule.thresholds?.[k] || ''})
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -550,7 +552,7 @@ export const RiskAssessmentPanel: React.FC<RiskAssessmentPanelProps> = ({
           <div className="text-xs text-amber-200/90 pl-6 space-y-1">
             <p className="font-semibold text-amber-100">Why was the risk escalated?</p>
             <ul className="list-disc pl-4 space-y-0.5 text-[11px] break-words">
-              {prediction.risk_escalation_reasons.map((reason, idx) => (
+              {prediction.risk_escalation_reasons.map((reason: string, idx: number) => (
                 <li key={idx}>{reason}</li>
               ))}
             </ul>

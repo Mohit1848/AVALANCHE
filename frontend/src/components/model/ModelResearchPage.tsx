@@ -510,7 +510,7 @@ export const ModelResearchPage: React.FC<ModelResearchPageProps> = ({ metadata }
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {comparisonReport?.metrics_table?.map((m, i) => (
+                {comparisonReport?.metrics_table?.map((m: { metric: string; colorado: string; himalaya: string }, i: number) => (
                   <tr key={i} className="hover:bg-slate-800/40">
                     <td className="py-2 px-3 font-semibold text-slate-200">{m.metric}</td>
                     <td className="py-2 px-3 text-cyan-300 font-bold">{m.colorado}</td>

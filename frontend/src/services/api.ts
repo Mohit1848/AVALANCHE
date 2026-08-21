@@ -24,6 +24,8 @@ import type {
   CustomDataValidationError,
   EvaluatedPointRecord,
   FieldSchemaDefinition,
+  GeographicDomain,
+  CrossDomainComparison,
 } from '../types';
 
 
@@ -305,9 +307,19 @@ export const api = {
   },
 
   // 7. Scientific Model Validation Report (Phase 6)
-  getScientificEvaluationReport: async (): Promise<ScientificEvaluationReport | null> => {
+  getScientificEvaluationReport: async (domain: GeographicDomain = 'COLORADO'): Promise<ScientificEvaluationReport | null> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/model/scientific-evaluation`);
+      const res = await fetch(`${API_BASE_URL}/model/scientific-evaluation?domain=${domain}`);
+      if (res.ok) return await res.json();
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
+  getCrossDomainComparison: async (): Promise<CrossDomainComparison | null> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/model/cross-domain-comparison`);
       if (res.ok) return await res.json();
       return null;
     } catch {

@@ -22,6 +22,69 @@ export interface RiskPredictionResponse {
   };
   provenance: Record<string, unknown>;
   disclaimer: string;
+  domain?: string;
+}
+
+export interface RuleEvaluationItem {
+  rule_id: string;
+  rule_name: string;
+  rule_type: string;
+  triggered: boolean;
+  escalated_to?: RiskLevel;
+  severity: string;
+  threshold_used?: string;
+  actual_value?: string | number | null;
+  rationale: string;
+  message?: string;
+}
+
+export interface PredictionContext {
+  target_id: string;
+  target_name: string;
+  target_type: 'STATION' | 'COORDINATE' | 'ZONE' | 'PEAK';
+  latitude: number;
+  longitude: number;
+  elevation: number;
+  slope: number;
+  aspect: number;
+  aspect_direction?: string;
+
+  // Weather / Meteorological
+  temperature: number | null;
+  humidity: number | null;
+  pressure: number | null;
+  precipitation: number | null;
+  wind_speed_mean_24h: number | null;
+  wind_speed_max_24h: number | null;
+
+  // Snowpack & Rolling Deltas
+  snow_depth: number | null;
+  snow_water_equivalent: number | null;
+  snowfall_6h: number | null;
+  snowfall_24h: number | null;
+  snowfall_72h: number | null;
+  temperature_delta_24h: number | null;
+  temperature_delta_72h: number | null;
+
+  // Authoritative Freshness & Provenance (Single Source of Truth)
+  telemetry_timestamp: string | null;
+  telemetry_age_minutes: number | null;
+  data_quality: DataQuality;
+  freshness_state: DataQuality;
+  assessment_status: 'CURRENT' | 'SUPPRESSED' | 'UNAVAILABLE';
+  prediction_available: boolean;
+  suppression_reason: string | null;
+  current_utc: string;
+  telemetry_status: DataQuality;
+  last_observation_timestamp: string | null;
+  telemetry_source?: string;
+  terrain_source?: string;
+
+  // Risk & Prediction
+  prediction: RiskPredictionResponse | null;
+  rules_evaluation?: RuleEvaluationItem[];
+  isLoading: boolean;
+  error?: string | null;
 }
 
 export interface PointPredictionPayload {
@@ -76,12 +139,16 @@ export interface SelectedLocationState {
   slope: number;
   aspect: number;
   temperature: number;
+  humidity?: number;
+  pressure?: number;
+  precipitation?: number;
   snow_depth: number;
   snow_water_equivalent: number;
   snowfall_6h: number;
   snowfall_24h: number;
   snowfall_72h: number;
   temperature_delta_24h: number;
+  temperature_delta_72h?: number;
   wind_speed_mean_24h: number;
   wind_speed_max_24h: number;
   telemetry_age_minutes?: number;
@@ -444,6 +511,51 @@ export interface IndianRegionsResponse {
   provenance: DataProvenance;
   count: number;
   regions: IndianRegion[];
+}
+
+export type GatingState =
+  | 'GEOGRAPHIC_ONLY'
+  | 'DATA_ACQUIRED'
+  | 'DATA_AUDITED'
+  | 'TRAINING_READY'
+  | 'MODEL_TRAINED'
+  | 'TEMPORAL_VALIDATED'
+  | 'SPATIAL_VALIDATED'
+  | 'CALIBRATED'
+  | 'MODEL_ENABLED';
+
+export interface DomainStatus {
+  domain: GeographicDomain;
+  display_name: string;
+  gating_state: GatingState;
+  model_loaded: boolean;
+  model_status: string;
+  model_version: string;
+  dataset_version: string;
+  feature_schema_version: string;
+  calibration_status: string;
+  operating_threshold: number;
+  thresholds: { medium: number; high: number };
+  disclaimer: string;
+}
+
+export interface CrossDomainComparison {
+  comparison_title: string;
+  scientific_disclaimer: string;
+  domains: {
+    colorado: DomainStatus;
+    himalaya: DomainStatus;
+  };
+  metrics_table: Array<{
+    metric: string;
+    colorado: string;
+    himalaya: string;
+  }>;
+  domain_shift_experiment: {
+    experiment: string;
+    finding: string;
+    conclusion: string;
+  };
 }
 
 // =====================================================================

@@ -20,6 +20,7 @@ import type {
   SpatialPredictionGridResponse,
   LayerVisibilityState,
   EvaluatedPointRecord,
+  PredictionContext,
 } from './types';
 import { Layers, FileSpreadsheet, MapPin } from 'lucide-react';
 
@@ -39,7 +40,7 @@ export function App() {
 
   // Spatial & Layer state
   const [activeRiskSurface] = useState<SpatialPredictionGridResponse | null>(null);
-  const [layerVisibility] = useState<LayerVisibilityState>({
+  const [layerVisibility, setLayerVisibility] = useState<LayerVisibilityState>({
     historicalEvents: true,
     snotelStations: true,
     forecastZones: true,
@@ -288,6 +289,42 @@ export function App() {
     }
   };
 
+  const currentContext: PredictionContext = {
+    target_id: selectedLocation.name,
+    target_name: selectedLocation.name,
+    target_type: selectedLocation.type === 'STATION' ? 'STATION' : 'COORDINATE',
+    latitude: selectedLocation.latitude,
+    longitude: selectedLocation.longitude,
+    elevation: selectedLocation.elevation,
+    slope: selectedLocation.slope,
+    aspect: selectedLocation.aspect,
+    temperature: selectedLocation.temperature,
+    humidity: selectedLocation.humidity ?? 65,
+    pressure: selectedLocation.pressure ?? 700,
+    precipitation: selectedLocation.precipitation ?? 0,
+    wind_speed_mean_24h: selectedLocation.wind_speed_mean_24h,
+    wind_speed_max_24h: selectedLocation.wind_speed_max_24h,
+    snow_depth: selectedLocation.snow_depth,
+    snow_water_equivalent: selectedLocation.snow_water_equivalent,
+    snowfall_6h: selectedLocation.snowfall_6h,
+    snowfall_24h: selectedLocation.snowfall_24h,
+    snowfall_72h: selectedLocation.snowfall_72h,
+    temperature_delta_24h: selectedLocation.temperature_delta_24h,
+    temperature_delta_72h: selectedLocation.temperature_delta_72h ?? null,
+    telemetry_timestamp: new Date().toISOString(),
+    telemetry_age_minutes: selectedLocation.telemetry_age_minutes ?? 0,
+    data_quality: prediction?.data_quality ?? 'GOOD',
+    freshness_state: 'GOOD',
+    assessment_status: 'CURRENT',
+    prediction_available: !!prediction,
+    suppression_reason: null,
+    current_utc: new Date().toISOString(),
+    telemetry_status: 'GOOD',
+    last_observation_timestamp: new Date().toISOString(),
+    prediction: prediction,
+    isLoading: isLoadingPrediction,
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* 1. Real-World Clean Brand Header */}
@@ -478,22 +515,51 @@ export function App() {
               {/* Map Layer Toolbar */}
               <div className="bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Layers className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <span className="font-bold text-slate-200 shrink-0">Map Controls:</span>
-                  <label className="flex items-center gap-1.5 cursor-pointer ml-1 text-slate-300 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={showHistoricalEvents}
-                      onChange={(e) => setShowHistoricalEvents(e.target.checked)}
-                      className="rounded bg-slate-800 border-slate-700 text-cyan-500"
-                    />
-                    <span className="truncate">Historical Avalanche Events</span>
-                  </label>
+                  <span className="font-mono text-slate-400 font-bold uppercase text-[10px] flex items-center gap-1">
+                    <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>GIS LAYERS:</span>
+                  </span>
+                  <div className="flex flex-wrap gap-1 text-[11px] font-mono">
+                    <button
+                      onClick={() =>
+                        setLayerVisibility((prev) => ({ ...prev, contours50m: !prev.contours50m }))
+                      }
+                      className={`px-2 py-0.5 rounded border transition-all cursor-pointer ${
+                        layerVisibility.contours50m
+                          ? 'bg-cyan-950 border-cyan-700 text-cyan-300 font-semibold'
+                          : 'bg-slate-950 border-slate-800 text-slate-500'
+                      }`}
+                    >
+                      50m Contours
+                    </button>
+                    <button
+                      onClick={() =>
+                        setLayerVisibility((prev) => ({ ...prev, snotelStations: !prev.snotelStations }))
+                      }
+                      className={`px-2 py-0.5 rounded border transition-all cursor-pointer ${
+                        layerVisibility.snotelStations
+                          ? 'bg-emerald-950 border-emerald-700 text-emerald-300 font-semibold'
+                          : 'bg-slate-950 border-slate-800 text-slate-500'
+                      }`}
+                    >
+                      SNOTEL
+                    </button>
+                    <button
+                      onClick={() => setShowHistoricalEvents((prev) => !prev)}
+                      className={`px-2 py-0.5 rounded border transition-all cursor-pointer ${
+                        showHistoricalEvents
+                          ? 'bg-purple-950 border-purple-700 text-purple-300 font-semibold'
+                          : 'bg-slate-950 border-slate-800 text-slate-500'
+                      }`}
+                    >
+                      Historical
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
-                  <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{selectedLocation.name} ({selectedLocation.elevation}m)</span>
+                <div className="flex items-center gap-1 text-slate-400 font-mono text-[11px] truncate">
+                  <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">{selectedLocation.name}</span>
                 </div>
               </div>
 
@@ -507,7 +573,6 @@ export function App() {
                   onSelectLocation={handleSelectLocation}
                   showEvents={showHistoricalEvents}
                   activeRiskLevel={prediction?.final_risk_level}
-                  isLiveMode={true}
                   layerVisibility={layerVisibility}
                   riskSurface={activeRiskSurface}
                   selectedDomain="COLORADO"
@@ -518,9 +583,7 @@ export function App() {
             {/* RIGHT (5 Cols): Real-Time Risk Intelligence & Safety Assessment */}
             <div className="lg:col-span-5 flex flex-col space-y-3 min-w-0 w-full">
               <RiskAssessmentPanel
-                prediction={prediction}
-                selectedLocation={selectedLocation}
-                isLoading={isLoadingPrediction}
+                context={currentContext}
                 onRefresh={() => evaluateLocationRisk(selectedLocation)}
               />
             </div>
@@ -529,13 +592,13 @@ export function App() {
           {/* Bottom Diagnostics Grid: Terrain + Snowpack + Weather */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0 w-full">
             <div className="min-w-0 w-full">
-              <TerrainPanel location={selectedLocation} />
+              <TerrainPanel context={currentContext} />
             </div>
             <div className="min-w-0 w-full">
-              <SnowpackPanel location={selectedLocation} />
+              <SnowpackPanel context={currentContext} />
             </div>
             <div className="min-w-0 w-full">
-              <WeatherPanel location={selectedLocation} />
+              <WeatherPanel context={currentContext} />
             </div>
           </div>
         </main>
