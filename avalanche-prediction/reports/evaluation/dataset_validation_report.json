@@ -1,0 +1,181 @@
+{
+  "dataset_path": "data\\avalanche_synthetic_20000.csv",
+  "total_rows": 20000,
+  "total_columns": 16,
+  "schema_validation": {
+    "expected_columns": [
+      "timestamp",
+      "location_id",
+      "latitude",
+      "longitude",
+      "elevation",
+      "slope",
+      "aspect",
+      "temperature",
+      "snow_depth",
+      "snow_water_equivalent",
+      "snowfall_24h",
+      "snowfall_72h",
+      "wind_speed_mean_24h",
+      "wind_speed_max_24h",
+      "avalanche_occurred",
+      "data_type"
+    ],
+    "missing_columns": [],
+    "extra_columns": [],
+    "is_valid": true
+  },
+  "data_quality": {
+    "total_missing_values": 0,
+    "missing_per_column": {
+      "timestamp": 0,
+      "location_id": 0,
+      "latitude": 0,
+      "longitude": 0,
+      "elevation": 0,
+      "slope": 0,
+      "aspect": 0,
+      "temperature": 0,
+      "snow_depth": 0,
+      "snow_water_equivalent": 0,
+      "snowfall_24h": 0,
+      "snowfall_72h": 0,
+      "wind_speed_mean_24h": 0,
+      "wind_speed_max_24h": 0,
+      "avalanche_occurred": 0,
+      "data_type": 0
+    },
+    "duplicate_rows": 0,
+    "range_violations": {
+      "latitude": 0,
+      "longitude": 0,
+      "elevation": 0,
+      "slope": 0,
+      "aspect": 0,
+      "temperature": 0,
+      "snow_depth": 0,
+      "snow_water_equivalent": 0,
+      "snowfall_24h": 0,
+      "snowfall_72h": 0,
+      "wind_speed_mean_24h": 0,
+      "wind_speed_max_24h": 0
+    }
+  },
+  "target_distribution": {
+    "counts": {
+      "1": 12940,
+      "0": 7060
+    },
+    "proportions": {
+      "1": 0.647,
+      "0": 0.353
+    },
+    "imbalance_ratio": 1.8329
+  },
+  "feature_summary": {
+    "latitude": {
+      "min": -43.71,
+      "max": 63.2,
+      "mean": 34.56,
+      "std": 21.94
+    },
+    "longitude": {
+      "min": -151.12,
+      "max": 170.27,
+      "mean": 26.85,
+      "std": 97.75
+    },
+    "elevation": {
+      "min": 700.0,
+      "max": 5855.0,
+      "mean": 3278.74,
+      "std": 902.79
+    },
+    "slope": {
+      "min": 7.4,
+      "max": 60.0,
+      "mean": 37.94,
+      "std": 7.96
+    },
+    "aspect": {
+      "min": 0.0,
+      "max": 359.0,
+      "mean": 178.72,
+      "std": 103.39
+    },
+    "temperature": {
+      "min": -32.4,
+      "max": 12.0,
+      "mean": -9.49,
+      "std": 6.55
+    },
+    "snow_depth": {
+      "min": 3.2,
+      "max": 500.0,
+      "mean": 175.18,
+      "std": 96.36
+    },
+    "snow_water_equivalent": {
+      "min": 1.8,
+      "max": 323.3,
+      "mean": 69.83,
+      "std": 48.11
+    },
+    "snowfall_24h": {
+      "min": 0.0,
+      "max": 66.0,
+      "mean": 9.3,
+      "std": 7.16
+    },
+    "snowfall_72h": {
+      "min": 1.0,
+      "max": 122.9,
+      "mean": 25.27,
+      "std": 13.38
+    },
+    "wind_speed_mean_24h": {
+      "min": 0.2,
+      "max": 55.0,
+      "mean": 11.88,
+      "std": 7.64
+    },
+    "wind_speed_max_24h": {
+      "min": 1.4,
+      "max": 107.4,
+      "mean": 27.74,
+      "std": 13.51
+    }
+  },
+  "locations": {
+    "count": 16,
+    "distribution": {
+      "Mount Fuji": 1311,
+      "Gulmarg": 1284,
+      "Denali": 1276,
+      "Mount Baker": 1274,
+      "Mount Rainier": 1273,
+      "Mont Blanc": 1269,
+      "Nathu La": 1263,
+      "Zojila Pass": 1253,
+      "Sonamarg": 1253,
+      "Auli": 1250,
+      "Rogers Pass": 1231,
+      "Manali": 1229,
+      "Kedarnath": 1217,
+      "Chamonix": 1208,
+      "Aoraki Mount Cook": 1205,
+      "Rohtang Pass": 1204
+    }
+  },
+  "data_type_metadata": {
+    "synthetic_simulated": 20000
+  },
+  "timestamp_summary": {
+    "valid_timestamps": 20000,
+    "invalid_timestamps": 0,
+    "min_timestamp": "2020-10-01 00:00:00",
+    "max_timestamp": "2026-09-29 23:00:00",
+    "span_days": 2190.0
+  },
+  "synthetic_notice": "NOTICE: Target labels in this dataset are simulated using a synthetic heuristic. Data must not be represented as verified field observations."
+}

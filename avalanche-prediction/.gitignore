@@ -12,3 +12,4 @@ data/avalanche_telemetry.db
 
 # Notebook checkpoints
 .ipynb_checkpoints/
+catboost_info/

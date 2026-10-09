@@ -204,6 +204,30 @@ const CONTOUR_LINES = [
   },
 ];
 
+export type BasemapKey = 'dark' | 'satellite' | 'topo';
+
+export const BASEMAP_TILES: Record<BasemapKey, { url: string; attribution: string; label: string; maxZoom: number; referenceUrl?: string }> = {
+  dark: {
+    label: 'Dark Tactical',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    referenceUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a> &copy; USGS, NOAA',
+    maxZoom: 16,
+  },
+  satellite: {
+    label: 'Alpine Satellite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, Earthstar Geographics',
+    maxZoom: 18,
+  },
+  topo: {
+    label: 'Topographic Relief',
+    url: 'https://tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> &copy; OpenStreetMap',
+    maxZoom: 17,
+  },
+};
+
 export const ColoradoMap: React.FC<ColoradoMapProps> = ({
   zones,
   stations,
@@ -230,6 +254,7 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
 }) => {
   const isIndia = selectedDomain === 'INDIA';
   const [showLayerMenu, setShowLayerMenu] = useState(false);
+  const [basemapStyle, setBasemapStyle] = useState<BasemapKey>('dark');
   const [layers, setLayers] = useState(layerVisibility);
 
   // Sync external layers with internal state
@@ -300,8 +325,28 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
           </button>
 
           {showLayerMenu && (
-            <div className="absolute top-10 left-0 w-48 p-2.5 rounded-lg bg-slate-900/95 border border-slate-700 shadow-2xl backdrop-blur-md space-y-1.5 motion-fade z-50">
+            <div className="absolute top-10 left-0 w-52 p-2.5 rounded-lg bg-slate-900/95 border border-slate-700 shadow-2xl backdrop-blur-md space-y-2 motion-fade z-50">
               <div className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider pb-1 border-b border-slate-800">
+                BASEMAP STYLE
+              </div>
+              <div className="grid grid-cols-3 gap-1 py-0.5">
+                {(['dark', 'satellite', 'topo'] as BasemapKey[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setBasemapStyle(mode)}
+                    className={`px-1.5 py-1 text-[10px] font-mono rounded transition-colors text-center ${
+                      basemapStyle === mode
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 font-bold'
+                        : 'bg-slate-800/60 text-slate-400 hover:text-slate-200 border border-transparent'
+                    }`}
+                  >
+                    {mode === 'dark' ? 'Dark' : mode === 'satellite' ? 'Satellite' : 'Topo'}
+                  </button>
+                ))}
+              </div>
+
+              <div className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wider pb-1 pt-1 border-b border-slate-800">
                 MAP LAYERS
               </div>
               {[
@@ -366,12 +411,20 @@ export const ColoradoMap: React.FC<ColoradoMapProps> = ({
         className="w-full h-full z-0"
         zoomControl={false}
       >
-        {/* Dark Topographic / Satellite Tiles */}
+        {/* Free, Unwatermarked Base Map Tiles (Esri Dark Tactical / Satellite / OpenTopoMap) */}
         <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          maxZoom={18}
+          key={`base-${basemapStyle}`}
+          attribution={BASEMAP_TILES[basemapStyle].attribution}
+          url={BASEMAP_TILES[basemapStyle].url}
+          maxZoom={BASEMAP_TILES[basemapStyle].maxZoom}
         />
+        {BASEMAP_TILES[basemapStyle].referenceUrl && (
+          <TileLayer
+            key={`ref-${basemapStyle}`}
+            url={BASEMAP_TILES[basemapStyle].referenceUrl!}
+            maxZoom={BASEMAP_TILES[basemapStyle].maxZoom}
+          />
+        )}
 
         <MapClickHandler onLocationClick={handleMapClick} />
         <MapController lat={centerLat} lon={centerLon} />

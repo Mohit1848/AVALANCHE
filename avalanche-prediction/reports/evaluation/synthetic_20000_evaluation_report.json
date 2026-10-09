@@ -1,0 +1,404 @@
+{
+  "dataset_name": "avalanche_synthetic_20000.csv",
+  "dataset_rows": 20000,
+  "dataset_type": "synthetic_simulated",
+  "training_timestamp": "2026-10-09T08:17:46.518992+00:00",
+  "best_model": "xgboost",
+  "feature_columns": [
+    "slope",
+    "aspect_sin",
+    "aspect_cos",
+    "elevation",
+    "temperature",
+    "humidity",
+    "pressure",
+    "precipitation",
+    "snow_depth",
+    "snow_water_equivalent",
+    "snowfall_6h",
+    "snowfall_24h",
+    "snowfall_72h",
+    "temperature_delta_24h",
+    "temperature_delta_72h",
+    "wind_speed_mean_24h",
+    "wind_speed_max_24h"
+  ],
+  "feature_importance": [
+    {
+      "feature": "snow_depth",
+      "importance": 0.2349
+    },
+    {
+      "feature": "snowfall_24h",
+      "importance": 0.0993
+    },
+    {
+      "feature": "snow_water_equivalent",
+      "importance": 0.0865
+    },
+    {
+      "feature": "snowfall_72h",
+      "importance": 0.0604
+    },
+    {
+      "feature": "slope",
+      "importance": 0.0585
+    },
+    {
+      "feature": "wind_speed_max_24h",
+      "importance": 0.0548
+    },
+    {
+      "feature": "pressure",
+      "importance": 0.0497
+    },
+    {
+      "feature": "elevation",
+      "importance": 0.0492
+    },
+    {
+      "feature": "snowfall_6h",
+      "importance": 0.0491
+    },
+    {
+      "feature": "temperature",
+      "importance": 0.0458
+    },
+    {
+      "feature": "aspect_sin",
+      "importance": 0.0438
+    },
+    {
+      "feature": "temperature_delta_24h",
+      "importance": 0.0425
+    },
+    {
+      "feature": "aspect_cos",
+      "importance": 0.0421
+    },
+    {
+      "feature": "temperature_delta_72h",
+      "importance": 0.042
+    },
+    {
+      "feature": "wind_speed_mean_24h",
+      "importance": 0.0414
+    },
+    {
+      "feature": "humidity",
+      "importance": 0.0
+    },
+    {
+      "feature": "precipitation",
+      "importance": 0.0
+    }
+  ],
+  "model_comparison": {
+    "random_forest": {
+      "accuracy": 0.777,
+      "precision": 0.8151,
+      "recall": 0.8508,
+      "f1": 0.8326,
+      "f2": 0.8434,
+      "roc_auc": 0.8399,
+      "pr_auc": 0.9094,
+      "brier_score": 0.1541,
+      "fnr_miss_rate": 0.1492,
+      "fpr_false_alarm": 0.3611,
+      "specificity": 0.6389,
+      "confusion_matrix": {
+        "tn": 890,
+        "fp": 503,
+        "fn": 389,
+        "tp": 2218,
+        "matrix_2x2": [
+          [
+            890,
+            503
+          ],
+          [
+            389,
+            2218
+          ]
+        ]
+      },
+      "per_class": {
+        "class_0_no_avalanche": {
+          "precision": 0.6958561376075059,
+          "recall": 0.6389088298636038,
+          "f1": 0.6661676646706587,
+          "support": 1393
+        },
+        "class_1_avalanche": {
+          "precision": 0.8151414920984932,
+          "recall": 0.8507863444572306,
+          "f1": 0.8325825825825826,
+          "support": 2607
+        }
+      }
+    },
+    "logistic_regression": {
+      "accuracy": 0.781,
+      "precision": 0.8209,
+      "recall": 0.8493,
+      "f1": 0.8348,
+      "f2": 0.8434,
+      "roc_auc": 0.8491,
+      "pr_auc": 0.9164,
+      "brier_score": 0.1495,
+      "fnr_miss_rate": 0.1507,
+      "fpr_false_alarm": 0.3467,
+      "specificity": 0.6533,
+      "confusion_matrix": {
+        "tn": 910,
+        "fp": 483,
+        "fn": 393,
+        "tp": 2214,
+        "matrix_2x2": [
+          [
+            910,
+            483
+          ],
+          [
+            393,
+            2214
+          ]
+        ]
+      },
+      "per_class": {
+        "class_0_no_avalanche": {
+          "precision": 0.6983883346124329,
+          "recall": 0.6532663316582915,
+          "f1": 0.6750741839762612,
+          "support": 1393
+        },
+        "class_1_avalanche": {
+          "precision": 0.8209121245828699,
+          "recall": 0.8492520138089759,
+          "f1": 0.834841628959276,
+          "support": 2607
+        }
+      }
+    },
+    "gradient_boosting": {
+      "accuracy": 0.7748,
+      "precision": 0.8145,
+      "recall": 0.8473,
+      "f1": 0.8306,
+      "f2": 0.8406,
+      "roc_auc": 0.8417,
+      "pr_auc": 0.9126,
+      "brier_score": 0.1534,
+      "fnr_miss_rate": 0.1527,
+      "fpr_false_alarm": 0.3611,
+      "specificity": 0.6389,
+      "confusion_matrix": {
+        "tn": 890,
+        "fp": 503,
+        "fn": 398,
+        "tp": 2209,
+        "matrix_2x2": [
+          [
+            890,
+            503
+          ],
+          [
+            398,
+            2209
+          ]
+        ]
+      },
+      "per_class": {
+        "class_0_no_avalanche": {
+          "precision": 0.6909937888198758,
+          "recall": 0.6389088298636038,
+          "f1": 0.6639313688922044,
+          "support": 1393
+        },
+        "class_1_avalanche": {
+          "precision": 0.81452802359882,
+          "recall": 0.8473341004986574,
+          "f1": 0.830607257003196,
+          "support": 2607
+        }
+      }
+    },
+    "xgboost": {
+      "accuracy": 0.7698,
+      "precision": 0.7979,
+      "recall": 0.8661,
+      "f1": 0.8306,
+      "f2": 0.8516,
+      "roc_auc": 0.837,
+      "pr_auc": 0.91,
+      "brier_score": 0.1583,
+      "fnr_miss_rate": 0.1339,
+      "fpr_false_alarm": 0.4106,
+      "specificity": 0.5894,
+      "confusion_matrix": {
+        "tn": 821,
+        "fp": 572,
+        "fn": 349,
+        "tp": 2258,
+        "matrix_2x2": [
+          [
+            821,
+            572
+          ],
+          [
+            349,
+            2258
+          ]
+        ]
+      },
+      "per_class": {
+        "class_0_no_avalanche": {
+          "precision": 0.7017094017094017,
+          "recall": 0.589375448671931,
+          "f1": 0.6406554818571986,
+          "support": 1393
+        },
+        "class_1_avalanche": {
+          "precision": 0.7978798586572439,
+          "recall": 0.8661296509397776,
+          "f1": 0.8306051131138495,
+          "support": 2607
+        }
+      }
+    },
+    "lightgbm": {
+      "accuracy": 0.7755,
+      "precision": 0.8138,
+      "recall": 0.85,
+      "f1": 0.8315,
+      "f2": 0.8425,
+      "roc_auc": 0.8388,
+      "pr_auc": 0.9114,
+      "brier_score": 0.1549,
+      "fnr_miss_rate": 0.15,
+      "fpr_false_alarm": 0.364,
+      "specificity": 0.636,
+      "confusion_matrix": {
+        "tn": 886,
+        "fp": 507,
+        "fn": 391,
+        "tp": 2216,
+        "matrix_2x2": [
+          [
+            886,
+            507
+          ],
+          [
+            391,
+            2216
+          ]
+        ]
+      },
+      "per_class": {
+        "class_0_no_avalanche": {
+          "precision": 0.6938136256851997,
+          "recall": 0.6360373295046662,
+          "f1": 0.6636704119850187,
+          "support": 1393
+        },
+        "class_1_avalanche": {
+          "precision": 0.8138082996694822,
+          "recall": 0.8500191791331032,
+          "f1": 0.8315196998123827,
+          "support": 2607
+        }
+      }
+    },
+    "catboost": {
+      "accuracy": 0.7748,
+      "precision": 0.8224,
+      "recall": 0.8347,
+      "f1": 0.8285,
+      "f2": 0.8322,
+      "roc_auc": 0.8425,
+      "pr_auc": 0.9127,
+      "brier_score": 0.1534,
+      "fnr_miss_rate": 0.1653,
+      "fpr_false_alarm": 0.3374,
+      "specificity": 0.6626,
+      "confusion_matrix": {
+        "tn": 923,
+        "fp": 470,
+        "fn": 431,
+        "tp": 2176,
+        "matrix_2x2": [
+          [
+            923,
+            470
+          ],
+          [
+            431,
+            2176
+          ]
+        ]
+      },
+      "per_class": {
+        "class_0_no_avalanche": {
+          "precision": 0.6816838995568686,
+          "recall": 0.6625987078248384,
+          "f1": 0.6720058245358573,
+          "support": 1393
+        },
+        "class_1_avalanche": {
+          "precision": 0.8223733938019653,
+          "recall": 0.8346758726505562,
+          "f1": 0.8284789644012945,
+          "support": 2607
+        }
+      }
+    }
+  },
+  "real_world_evaluation": {
+    "accuracy": 0.7083,
+    "precision": 0.6897,
+    "recall": 0.9836,
+    "f1": 0.8108,
+    "f2": 0.9063,
+    "roc_auc": 0.8885,
+    "pr_auc": 0.9418,
+    "brier_score": 0.1933,
+    "fnr_miss_rate": 0.0164,
+    "fpr_false_alarm": 0.7714,
+    "specificity": 0.2286,
+    "confusion_matrix": {
+      "tn": 8,
+      "fp": 27,
+      "fn": 1,
+      "tp": 60,
+      "matrix_2x2": [
+        [
+          8,
+          27
+        ],
+        [
+          1,
+          60
+        ]
+      ]
+    },
+    "per_class": {
+      "class_0_no_avalanche": {
+        "precision": 0.8888888888888888,
+        "recall": 0.22857142857142856,
+        "f1": 0.36363636363636365,
+        "support": 35
+      },
+      "class_1_avalanche": {
+        "precision": 0.6896551724137931,
+        "recall": 0.9836065573770492,
+        "f1": 0.8108108108108109,
+        "support": 61
+      }
+    }
+  },
+  "thresholds": {
+    "medium": 0.4,
+    "high": 0.7
+  },
+  "scientific_disclaimer": "Academic decision-support research. Dataset labels were generated by synthetic mathematical heuristics. Model performance on synthetic data demonstrates heuristic recovery and cannot be assumed to generalize directly to complex real mountain snowpack conditions without empirical verification."
+}

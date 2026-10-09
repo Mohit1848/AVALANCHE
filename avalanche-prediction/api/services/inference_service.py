@@ -138,14 +138,27 @@ class AvalancheInferenceEngine:
                     probs = self.pipeline.predict_proba(frame)[0]
                     calibrated_prob = float(probs[pos_idx])
 
-                    clf_step = self.pipeline.named_steps.get("clf")
+                    # Physical terrain constraint: natural slab avalanches do not initiate on low-angle slopes (<25°)
+                    slope_val = feature_data.get("slope")
+                    if slope_val is not None:
+                        try:
+                            s = float(slope_val)
+                            if s < 25.0:
+                                terrain_factor = max(0.1, (s / 28.0) ** 2)
+                                calibrated_prob = min(calibrated_prob * terrain_factor, 0.35)
+                        except (ValueError, TypeError):
+                            pass
+
+                    clf_step = self.pipeline.named_steps.get("classifier") or self.pipeline.named_steps.get("clf")
                     if clf_step and hasattr(clf_step, "calibrated_classifiers_") and len(clf_step.calibrated_classifiers_) > 0:
                         base_est = clf_step.calibrated_classifiers_[0].estimator
                         if hasattr(base_est, "predict_proba"):
-                            imputer = self.pipeline.named_steps.get("imputer")
-                            x_trans = imputer.transform(frame) if imputer else frame
+                            preprocessor = self.pipeline.named_steps.get("preprocessor") or self.pipeline.named_steps.get("imputer")
+                            x_trans = preprocessor.transform(frame) if preprocessor else frame
                             raw_probs = base_est.predict_proba(x_trans)[0]
                             raw_prob = float(raw_probs[pos_idx])
+                            if slope_val is not None and float(slope_val) < 25.0:
+                                raw_prob = min(raw_prob * terrain_factor, 0.35)
             except Exception as e:
                 print(f"Inference pipeline execution notice: {e}")
                 calibrated_prob = None

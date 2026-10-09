@@ -1,0 +1,281 @@
+================================================================================
+   AVALANCHE RISK INTELLIGENCE & EARLY WARNING SYSTEM
+   PROJECT WORKFLOW EXPLAINED IN SIMPLE WORDS
+================================================================================
+
+Target Audience: Anyone (students, teachers, project guides, beginners)
+Project Type: Smart India Hackathon (SIH) - AI & IoT Decision Support System
+Goal: Detect avalanche danger early in mountain areas to protect lives and roads.
+
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. What is an Avalanche and Why is This Project Needed?
+2. The Big Picture (How the Whole System Works in 30 Seconds)
+3. Step-by-Step Flow of Work (From Mountain Snow to Alert Screen)
+   - Step 1: Gathering Mountain Data (Weather & Geography)
+   - Step 2: Cleaning the Data (Checking for Errors & Stale Sensors)
+   - Step 3: The AI Brain (Predicting the Chance of a Slide)
+   - Step 4: The "Safety Net" Rules (Why AI Alone is Not Trusted with Lives)
+   - Step 5: The Backend Brain (FastAPI Server)
+   - Step 6: The User Dashboard (Map, Charts & Alerts)
+   - Step 7: The Human Officer's Final Decision
+4. Summary Table of Technologies Used
+5. How You Can Explain This in a 2-Minute Project Viva/Interview
+
+
+================================================================================
+1. WHAT IS AN AVALANCHE AND WHY IS THIS PROJECT NEEDED?
+================================================================================
+
+An avalanche happens when a huge mass of snow breaks off a steep mountain slope 
+and rushes downhill at speeds up to 100+ km/h. It can bury mountain highways, 
+destroy army bases, and kill skiers or villagers.
+
+Traditionally, mountain experts had to manually hike up risky slopes or look at 
+weather reports by hand. 
+
+OUR PROJECT AUTOMATES AND IMPROVES THIS PROCESS:
+We built a software platform that combines:
+  1. Mountain weather and snow sensor data,
+  2. Artificial Intelligence (Machine Learning),
+  3. Strict physical safety rules, and
+  4. An interactive visual map dashboard,
+to tell safety officers: "Warning! This mountain pass has high avalanche danger today!"
+
+
+================================================================================
+2. THE BIG PICTURE (HOW THE SYSTEM WORKS IN 30 SECONDS)
+================================================================================
+
+Think of this project like a smart weather radar for avalanches.
+Here is the whole journey in one visual diagram:
+
+ [ Mountain Sensors / CSV File ]
+             │
+             ▼
+    (1) DATA INPUT
+        • Snow depth, fresh snowfall (24h/72h), temperature, wind, slope angle
+             │
+             ▼
+    (2) DATA CLEANING & VALIDATION
+        • Checks if sensors are working properly
+        • Cleans up missing or bad values
+             │
+             ▼
+    (3) AI / MACHINE LEARNING PREDICTION
+        • Smart AI models (Random Forest, Logistic Regression)
+        • Calculates probability: e.g. "82% chance of avalanche"
+             │
+             ▼
+    (4) DETERMINISTIC SAFETY OVERRIDES (PHYSICAL LAWS)
+        • Hard safety checks: If slope is steep (>=34 deg) & heavy snow fell,
+          it FORCES the status to HIGH DANGER, even if the AI made a mistake!
+             │
+             ▼
+    (5) FASTAPI BACKEND SERVER (Port 8000)
+        • Packaging the final risk: LOW, MEDIUM, or HIGH
+        • Explaining WHY the risk is high (e.g. "Wind loading on steep slope")
+             │
+             ▼
+    (6) REACT WEB DASHBOARD (Port 5173)
+        • Interactive GIS map with color markers (Green / Yellow / Red)
+        • Weather graphs & one-click safety reports for 65+ global mountains
+             │
+             ▼
+    (7) HUMAN DECISION SUPPORT
+        • Army patrols, highway authorities, or rescue teams take action
+          (close road, shoot control explosives, or issue warnings).
+
+
+================================================================================
+3. STEP-BY-STEP FLOW OF WORK
+================================================================================
+
+--------------------------------------------------------------------------------
+STEP 1: GATHERING MOUNTAIN DATA (THE INPUTS)
+--------------------------------------------------------------------------------
+Where do we get our information?
+From mountain weather stations (called SNOTEL / AWS) or uploaded CSV files.
+
+The system looks at 7 critical factors:
+  1. Slope Angle: Avalanches rarely happen on flat ground. Most happen between 
+     30 and 45 degrees steepness.
+  2. Fresh Snowfall (Last 24h & 72h): Heavy fresh snow piles weight on top 
+     of old snow, making it ready to slide.
+  3. Snow Depth & Density: How thick and heavy is the total snowpack?
+  4. Temperature: Sudden warming melts ice and lubricates the slide layer.
+  5. Wind Speed & Direction: Wind strips snow from one side of the mountain 
+     and dumps it as a heavy "snow slab" on the opposite (lee) side.
+  6. Aspect: Which direction does the slope face (North, South, East, West)? 
+     (This determines how much sunlight or wind it gets).
+  7. Elevation: Higher altitudes have colder, harsher conditions.
+
+In our project:
+We have a master dataset of 65+ premier world mountains (Himalayas, Alps, 
+Rockies, Andes) including Mount Everest Khumbu Icefall, K2, Gulmarg, Zojila, 
+Mont Blanc, and Denali.
+
+
+--------------------------------------------------------------------------------
+STEP 2: DATA CLEANING & VALIDATION (MAKING SURE THE DATA IS NOT JUNK)
+--------------------------------------------------------------------------------
+In the harsh mountains, sensors often freeze, disconnect, or send corrupt numbers 
+(like -999). 
+
+Our system does 3 things before doing any math:
+  • Freshness Check: Is the data fresh? If a sensor hasn't updated for more 
+    than 6 hours, it marks the station as "STALE" and warns the user.
+  • Range Validation: Checks if numbers are realistic (e.g. slope must be 
+    between 0 and 90 degrees; temperature cannot be +70 C in snow).
+  • Imputation & Scaling: Fills small gaps using median averages and scales 
+    the numbers so the AI models don't get confused by big numbers.
+
+
+--------------------------------------------------------------------------------
+STEP 3: THE AI BRAIN (CALCULATING AVALANCHE PROBABILITY)
+--------------------------------------------------------------------------------
+Now that the data is clean, it is sent to our Machine Learning models:
+  • Logistic Regression (fast, transparent baseline)
+  • Random Forest (examines complex non-linear combinations of weather)
+  • Probability Calibration (CalibratedClassifierCV): Ensures that if the 
+    model says "80% risk", it truly represents an 80% real-world likelihood.
+
+The AI analyzes all inputs together and outputs a probability score from 
+0.0 (0% risk) to 1.0 (100% risk).
+
+
+--------------------------------------------------------------------------------
+STEP 4: THE "SAFETY NET" RULES (PHYSICAL HEURISTIC OVERRIDES)
+--------------------------------------------------------------------------------
+THIS IS ONE OF THE STRONGEST FEATURES OF OUR PROJECT.
+Why can't we trust AI 100% by itself?
+Because in safety-critical systems, an AI might have a blind spot and say 
+"Low Risk (25%)", but mountain physics says an avalanche is guaranteed!
+
+To protect human lives, we built deterministic physical override rules:
+  • RULE 1 (Critical Slope + Heavy Snow): 
+    If slope is >= 34 degrees AND new snow is >= 30mm, the system instantly 
+    FORCES the risk to HIGH, overriding any lower AI prediction.
+  • RULE 2 (Severe Wind Loading): 
+    If winds exceed 30 km/h blowing onto lee slopes, the risk level is 
+    escalated upwards by one level.
+  • RULE 3 (Stale Telemetry Guard): 
+    If sensor data is missing or outdated, the system refuses to say "Safe". 
+    It displays "DEGRADED / REVIEW REQUIRED".
+
+The final output is classified into clear tiers:
+  🟢 LOW RISK (0.0 to 0.40)   -> Safe for normal transit
+  🟡 MEDIUM RISK (0.40 to 0.70) -> Caution, monitor conditions closely
+  🔴 HIGH RISK (0.70 to 1.00)  -> Hazardous, stay away or close corridor
+
+
+--------------------------------------------------------------------------------
+STEP 5: THE FASTAPI BACKEND SERVER (THE ENGINE UNDER THE HOOD)
+--------------------------------------------------------------------------------
+Built with Python 3.13 and FastAPI.
+Runs locally at: http://127.0.0.1:8000
+
+Why FastAPI?
+  • Extremely fast (processes predictions in milliseconds).
+  • Serves clean REST API endpoints:
+      - /predict: accepts coordinates and weather -> returns risk rating
+      - /spatial: calculates risk across an entire mountain grid
+      - /telemetry: ingests live sensor readings
+      - /health: monitors system status and model readiness
+  • Automated Interactive Documentation at http://127.0.0.1:8000/docs.
+
+IMPORTANT ARCHITECTURE RULE:
+"The Backend is the Single Source of Truth." 
+The frontend browser NEVER calculates risk scores on its own. Everything is 
+calculated on the backend so no calculation can ever be faked or go out of sync.
+
+
+--------------------------------------------------------------------------------
+STEP 6: THE USER DASHBOARD (WHAT THE USER SEES & INTERACTS WITH)
+--------------------------------------------------------------------------------
+Built with React, TypeScript, and Vite.
+Runs locally at: http://localhost:5173
+
+The web dashboard is divided into intuitive, user-friendly tabs:
+  1. 🗺️ Leaflet GIS Map: 
+     A satellite/topographic interactive map showing mountain passes with 
+     Green, Yellow, and Red pins. Clicking any pin shows its full weather 
+     and risk breakdown.
+  2. 📊 CSV Data Studio: 
+     Users can drag-and-drop any CSV file with weather readings, or click 
+     presets to run batch predictions for 65+ mountains across the world.
+  3. 📈 Weather & Snow Analytics: 
+     Clean visual charts showing 24h/72h snowfall, wind loading vs. slope, 
+     and temperature trends.
+  4. 🛡️ Safety Advisories & Bulletins: 
+     Explains the exact reasons behind the warning (e.g. "Critical starting 
+     zone slope triggered heuristic safety ratchet").
+
+
+--------------------------------------------------------------------------------
+STEP 7: THE HUMAN OFFICER'S FINAL DECISION (HUMAN-IN-THE-LOOP)
+--------------------------------------------------------------------------------
+This project is an AI Decision-Support System, NOT an autonomous robot.
+It provides clear intelligence and explainability so that human officers 
+(Border Roads Organisation, Army mountain commanders, highway authorities, 
+or ski patrol chiefs) can make the final call on:
+  • Closing a mountain pass
+  • Triggering controlled preventative avalanches with explosives
+  • Evacuating vulnerable checkpoints
+
+
+================================================================================
+4. SUMMARY TABLE OF TECHNOLOGIES USED
+================================================================================
+
+Component         Technology                What It Does
+--------------------------------------------------------------------------------
+Frontend          React 19 + TypeScript     Fast, type-safe user interface
+Styling           Tailwind CSS              Clean dark-mode modern alpine UI
+Mapping           Leaflet / React-Leaflet   Interactive topographic GIS maps
+Charts            Recharts                  Visual weather & snow graphs
+Backend           FastAPI (Python 3.13)     High-speed REST API server
+Machine Learning  Scikit-Learn              Random Forest, Logistic Regression
+Calibration       CalibratedClassifierCV    Produces genuine probabilities
+Data Handling     Pandas & NumPy            CSV parsing and numeric processing
+Dataset           65+ Global Mountain CSV   Real global peaks (Himalayas to Alps)
+
+
+================================================================================
+5. HOW TO EXPLAIN THIS IN A 2-MINUTE VIVA / INTERVIEW
+================================================================================
+
+If your professor or examiner asks: "Can you explain the workflow of your project?"
+You can answer smoothly using these 4 points:
+
+"Our project is an AI-based Avalanche Risk Intelligence System built for 
+Smart India Hackathon problem statement SIH260105. 
+
+The workflow has 4 simple stages:
+
+1. INPUT & CLEANING:
+   We collect 7 critical mountain weather and terrain parameters: slope angle, 
+   fresh snowfall, snow depth, temperature, wind speed, wind direction, and 
+   elevation. The system validates the data and ensures sensor telemetry is fresh.
+
+2. AI PREDICTION:
+   The cleaned data is fed into calibrated machine learning models (Random Forest 
+   and Logistic Regression) which calculate the statistical probability of an 
+   avalanche occurring.
+
+3. PHYSICAL SAFETY OVERRIDE (THE UNIQUE HIGHLIGHT):
+   Because lives are at stake, we don't rely only on AI. We built deterministic 
+   physical rules: for example, if the slope is 34 degrees or steeper and heavy 
+   fresh snow has fallen, the system forcefully escalates the risk to HIGH, 
+   preventing dangerous false-safe AI errors.
+
+4. USER DASHBOARD:
+   The results are sent to our React + Leaflet GIS console on port 5173, where 
+   operators can see color-coded maps, snow charts, and batch-test 65+ global 
+   mountain passes from a master CSV dataset with one click."
+
+================================================================================
+END OF DOCUMENT
+================================================================================

@@ -104,6 +104,7 @@ def resolve_feature_columns(df: pd.DataFrame, config: PreprocessingConfig) -> li
         "event_id",
         "synthetic",
         "data_quality",
+        "data_type",
     }
     return [column for column in df.columns if column not in exclude_cols]
 
@@ -158,8 +159,13 @@ def _mark_obvious_invalid_values(df: pd.DataFrame, feature_columns: Iterable[str
         "temperature": (-80, 60),
         "snow_depth": (0, None),
         "snowfall": (0, None),
+        "snow_water_equivalent": (0, None),
+        "snowfall_24h": (0, None),
+        "snowfall_72h": (0, None),
         "humidity": (0, 100),
         "wind_speed": (0, 200),
+        "wind_speed_mean_24h": (0, 200),
+        "wind_speed_max_24h": (0, 400),
         "wind_direction": (0, 360),
         "pressure": (300, 1100),
         "slope": (0, 90),
@@ -399,6 +405,7 @@ def prepare_train_test_data(
         "event_id",
         "synthetic",
         "data_quality",
+        "data_type",
     }
     feature_columns = [col for col in engineered_df.columns if col not in exclude_metadata]
 

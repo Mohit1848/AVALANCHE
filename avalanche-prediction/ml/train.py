@@ -12,7 +12,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
@@ -28,7 +28,10 @@ from sklearn.metrics import (
 from sklearn.model_selection import GroupKFold, TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 
-from preprocessing import PreprocessingConfig, create_preprocessor, prepare_train_test_data
+try:
+    from preprocessing import PreprocessingConfig, create_preprocessor, prepare_train_test_data
+except ImportError:
+    from ml.preprocessing import PreprocessingConfig, create_preprocessor, prepare_train_test_data
 
 DEFAULT_MODEL_PATH = Path("models/avalanche_baseline.joblib")
 
@@ -108,6 +111,22 @@ def build_models(random_state: int, calibration_cv: Any = 3) -> dict[str, Pipeli
                         estimator=LogisticRegression(
                             max_iter=1000,
                             class_weight="balanced",
+                            random_state=random_state,
+                        ),
+                        method="sigmoid",
+                        cv=calibration_cv,
+                    ),
+                ),
+            ]
+        ),
+        "gradient_boosting": Pipeline(
+            [
+                ("preprocessor", create_preprocessor(scale_numeric=False)),
+                (
+                    "classifier",
+                    CalibratedClassifierCV(
+                        estimator=GradientBoostingClassifier(
+                            n_estimators=150,
                             random_state=random_state,
                         ),
                         method="sigmoid",
@@ -348,30 +367,37 @@ def main() -> None:
     output_path = Path(args.model_out)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    joblib.dump(
-        {
-            "model": models[best_model_name],
-            "model_name": best_model_name,
-            "target_column": args.target,
-            "feature_columns": feature_columns,
-            "positive_label": positive_label,
-            "classes": classes,
-            "risk_thresholds": parse_risk_thresholds(args.risk_thresholds),
-            "metrics": results[best_model_name],
-            "validation_strategy": strategy_used,
-            "calibration_metadata": {
-                "method": "sigmoid",
-                "calibrated": True,
-                "cv_strategy": "TimeSeriesSplit" if strategy_used == "temporal" else "StandardCV",
-            },
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "feature_engineering_version": "v2_spatiotemporal",
+    bundle = {
+        "model": models[best_model_name],
+        "model_name": best_model_name,
+        "target_column": args.target,
+        "feature_columns": feature_columns,
+        "positive_label": positive_label,
+        "classes": classes,
+        "risk_thresholds": parse_risk_thresholds(args.risk_thresholds),
+        "metrics": results[best_model_name],
+        "validation_strategy": strategy_used,
+        "calibration_metadata": {
+            "method": "sigmoid",
+            "calibrated": True,
+            "cv_strategy": "TimeSeriesSplit" if strategy_used == "temporal" else "StandardCV",
         },
-        output_path,
-    )
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "feature_engineering_version": "v2_spatiotemporal",
+        "domain": "COLORADO",
+        "inference_enabled": True,
+        "preprocessor": models[best_model_name].named_steps.get("preprocessor"),
+    }
+
+    joblib.dump(bundle, output_path)
+
+    # Also mirror to models/colorado/avalanche_model.joblib for domain registry alignment
+    co_model_path = Path("models/colorado/avalanche_model.joblib")
+    co_model_path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(bundle, co_model_path)
 
     print(f"\nBest model: {best_model_name}")
-    print(f"Saved model artifact to: {output_path}")
+    print(f"Saved model artifact to: {output_path} and {co_model_path}")
 
 
 if __name__ == "__main__":

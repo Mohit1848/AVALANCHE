@@ -19,7 +19,10 @@ from sklearn.metrics import (
     brier_score_loss,
 )
 
-from preprocessing import PreprocessingConfig, prepare_train_test_data
+try:
+    from preprocessing import PreprocessingConfig, prepare_train_test_data
+except ImportError:
+    from ml.preprocessing import PreprocessingConfig, prepare_train_test_data
 
 
 def calculate_metrics(model, x_test, y_test, positive_label: Any) -> dict[str, Any]:
