@@ -1,0 +1,14 @@
+{
+  "name": "avalanche-risk-system",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Avalanche Risk Prediction and Early Warning System",
+  "scripts": {
+    "test": "npm --prefix frontend test",
+    "test:frontend": "npm --prefix frontend test",
+    "test:backend": "pytest avalanche-prediction/tests",
+    "test:all": "pytest avalanche-prediction/tests && npm --prefix frontend test",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build"
+  }
+}
